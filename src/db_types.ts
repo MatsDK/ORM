@@ -1,14 +1,23 @@
 export type ColumnTypes =
-  | "int"
   | "int4"
   | "int2"
   | "int8"
   | "bool"
-  | "boolean"
   | "text"
-  | "float8"
   | "float4"
+  | "float8"
   | "date";
+
+// export const TypeMap: { [key: string]: ColumnTypes } = {
+//   integer: "int",
+//   text: "text",
+//   boolean: "bool",
+//   date: "date",
+//   smallint: "int2",
+//   bigint: "int8",
+//   "double precision": "float",
+//   real: "float4",
+// };
 
 export class TypeClass {
   type: ColumnTypes;
@@ -17,7 +26,14 @@ export class TypeClass {
 export class Int {
   type: ColumnTypes;
   constructor() {
-    this.type = "int";
+    this.type = "int4";
+  }
+}
+
+export class Int4 {
+  type: ColumnTypes;
+  constructor() {
+    this.type = "int4";
   }
 }
 
@@ -49,17 +65,24 @@ export class Text {
   }
 }
 
-export class Float8 {
+export class Float4 {
+  type: ColumnTypes;
+  constructor() {
+    this.type = "float4";
+  }
+}
+
+export class Float {
   type: ColumnTypes;
   constructor() {
     this.type = "float8";
   }
 }
 
-export class Float4 {
+export class Float8 {
   type: ColumnTypes;
   constructor() {
-    this.type = "float4";
+    this.type = "float8";
   }
 }
 
