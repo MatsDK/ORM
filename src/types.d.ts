@@ -1,5 +1,5 @@
 import { Component1 } from ".";
-import { ORMHandler } from "./Handler";
+import { ORMHandler } from "./lib/Handler";
 import { TableOptions } from "./helpers/decoratorsTypes";
 
 export interface GlobalType extends globalThis {

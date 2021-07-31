@@ -5,7 +5,7 @@ import { BaseTable } from "../table/BaseTable";
 
 @Table({ name: "User21" })
 export class User extends BaseTable {
-  @Column()
+  @Column({ nullable: true })
   name: string;
 
   @Column((returnType) => ["int"], { name: "ID" })

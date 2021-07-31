@@ -49,6 +49,7 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
     throw new Error(`Type not found of: ${propertyKey}`);
 
   options.array = !!options.array;
+  options.nullable = !!options.nullable;
 
   return { getType: () => type || "", options };
 };

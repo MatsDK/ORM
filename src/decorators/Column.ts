@@ -1,5 +1,5 @@
 import { ColumnTypes, TypeClass } from "../db_types";
-import { getOrCreateOrmHandler } from "../Global";
+import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType } from "../helpers/decoratorsTypes";
 import { findTypeAndOptoins } from "../helpers/findTypeAndOptions";
 

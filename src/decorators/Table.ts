@@ -1,4 +1,4 @@
-import { getOrCreateOrmHandler } from "../Global";
+import { getOrCreateOrmHandler } from "../lib/Global";
 import { TableOptions } from "../helpers/decoratorsTypes";
 
 export const Table = (options: TableOptions = {}): ClassDecorator => {

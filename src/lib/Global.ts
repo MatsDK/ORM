@@ -1,5 +1,5 @@
 import { ORMHandler } from "./Handler";
-import { GlobalType } from "./types";
+import { GlobalType } from "../types";
 
 export const Global: GlobalType = global as unknown as GlobalType;
 

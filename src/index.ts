@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { Connection } from "./connection";
-import { getOrCreateOrmHandler } from "./Global";
+import { getOrCreateOrmHandler } from "./lib/Global";
 import { User } from "./schemas/User";
 
 (async () => {
@@ -15,10 +15,10 @@ import { User } from "./schemas/User";
   });
 
   await conn.connect(() => {
-    console.log("connected to db");
+    console.log(">> connected to db");
   });
 
-  const newUser: User = new conn.tables["User21"]();
+  // const newUser: User = new conn.tables["User21"]();
 
-  console.log(getOrCreateOrmHandler().connectionHandler);
+  // console.log(getOrCreateOrmHandler().connectionHandler);
 })();

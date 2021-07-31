@@ -1,7 +1,7 @@
 export interface ColumnOptions {
   name?: string;
   array?: boolean;
-  nullbale?: boolean;
+  nullable?: boolean;
   default?: any;
 }
 
