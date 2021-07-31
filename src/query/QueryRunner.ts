@@ -13,106 +13,67 @@ export class QueryRunner {
   }
 
   async query(query: string): Promise<any> {
-    console.log("QUERY:", query.trim());
-    return this.conn!.query(query);
-  }
+    if (!this.conn) return { rows: undefined, err: "There is no connection" };
 
-  async getTablesInDatabase(): Promise<QueryRunnerResult> {
-    if (!this.conn) return { err: "There is no connection", rows: undefined };
-    const query = this.queryBuilder.findTablesQuery();
-
-    return { ...(await this.query(query)), err: undefined };
-  }
-
-  async createTableInDatabase(
-    tableConfig: TableType,
-    colums: ColumnType[]
-  ): Promise<{ err: undefined | string }> {
-    if (!this.conn) return { err: "There is no connection" };
-    const query = this.queryBuilder.createTableQuery(tableConfig, colums);
-
+    console.log("Query: ", query);
     try {
-      await this.query(query);
-
-      return { err: undefined };
-    } catch (error) {
-      return { err: error.message };
-    }
-  }
-
-  async dropTableInDatabase(
-    tableName: string
-  ): Promise<{ err: string | undefined }> {
-    if (!this.conn) return { err: "There is no connection" };
-    const query = this.queryBuilder.dropTableQuery(tableName);
-
-    try {
-      await this.query(query);
-
-      return { err: undefined };
-    } catch (error) {
-      return { err: error.message };
-    }
-  }
-
-  async getTableColumns(tableName: string): Promise<QueryRunnerResult> {
-    if (!this.conn) return { err: "There is no connection", rows: undefined };
-    const query = this.queryBuilder.getColumnsQuery(tableName);
-
-    try {
-      const res = await this.query(query);
-
-      return { ...res, err: undefined };
+      return { ...(await this.conn!.query(query)), err: undefined };
     } catch (error) {
       return { err: error.message, rows: undefined };
     }
   }
 
+  async getTablesInDatabase(): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.findTablesQuery();
+
+    return await this.query(query);
+  }
+
+  async createTableInDatabase(
+    tableConfig: TableType,
+    colums: ColumnType[]
+  ): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.createTableQuery(tableConfig, colums);
+
+    return await this.query(query);
+  }
+
+  async dropTableInDatabase(tableName: string): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.dropTableQuery(tableName);
+
+    return await this.query(query);
+  }
+
+  async getTableColumns(tableName: string): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.getColumnsQuery(tableName);
+
+    return await this.query(query);
+  }
+
   async createColumnInDatabase(
     column: ColumnType,
     tableName: string
-  ): Promise<{ err: string | undefined }> {
-    if (!this.conn) return { err: "There is no connection" };
+  ): Promise<QueryRunnerResult> {
     const query = this.queryBuilder.createColumnQuery(column, tableName);
 
-    try {
-      const res = await this.query(query);
-
-      return { err: undefined };
-    } catch (error) {
-      return { err: error.message };
-    }
+    return await this.query(query);
   }
 
   async updateColumnInDatabase(
     column: ColumnType,
     tableName: string
-  ): Promise<{ err: string | undefined }> {
-    if (!this.conn) return { err: "There is no connection" };
+  ): Promise<QueryRunnerResult> {
     const query = this.queryBuilder.createUpdateColumnQuery(column, tableName);
 
-    try {
-      await this.query(query);
-
-      return { err: undefined };
-    } catch (error) {
-      return { err: error.message };
-    }
+    return await this.query(query);
   }
 
   async dropColumnInTable(
     columnName: string,
     tableName: string
-  ): Promise<{ err: string | undefined }> {
-    if (!this.conn) return { err: "There is no connection" };
+  ): Promise<QueryRunnerResult> {
     const query = this.queryBuilder.dropColumnQuery(columnName, tableName);
 
-    try {
-      await this.query(query);
-
-      return { err: undefined };
-    } catch (error) {
-      return { err: error.message };
-    }
+    return await this.query(query);
   }
 }

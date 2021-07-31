@@ -1,6 +1,5 @@
 import "reflect-metadata";
-import { Connection } from "./connection";
-import { getOrCreateOrmHandler } from "./lib/Global";
+import { Connection } from "../src/connection";
 import { User } from "./schemas/User";
 
 (async () => {
