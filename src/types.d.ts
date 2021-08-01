@@ -18,3 +18,8 @@ export interface ColumnType {
   type: string;
   options: ColumnOptions;
 }
+
+export interface RelationType {
+  target: string;
+  name: string;
+}

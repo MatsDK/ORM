@@ -30,35 +30,43 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       if (!rows) return { err: "Rows not found" };
 
       const dbColumns = formatColumnRows(rows);
-      for (const column of columns) {
-        if (!dbColumns.find((c) => c.columnName === column.name)) {
-          const { err } = await handler
-            .getOrCreateQueryRunner()
-            .createColumnInDatabase(column, tableName);
+      const columnQueries: string[] = [];
 
-          if (err) return { err };
-        } else if (
+      for (const column of columns) {
+        if (!dbColumns.find((c) => c.columnName === column.name))
+          columnQueries.push(
+            handler
+              .getOrCreateQueryRunner()
+              .queryBuilder.createColumnQuery(column, tableName)
+          );
+        else if (
           columnHasChanged(
             column,
             dbColumns.find((c) => c.columnName === column.name)!
           )
-        ) {
-          const { err } = await handler
-            .getOrCreateQueryRunner()
-            .updateColumnInDatabase(column, tableName);
-
-          if (err) return { err };
-        }
+        )
+          columnQueries.push(
+            handler
+              .getOrCreateQueryRunner()
+              .queryBuilder.createUpdateColumnQuery(column, tableName)
+          );
       }
 
       for (const { columnName } of dbColumns) {
-        if (!columns.find((c) => c.name === columnName)) {
-          const { err } = await handler
-            .getOrCreateQueryRunner()
-            .dropColumnInTable(columnName, tableName);
+        if (!columns.find((c) => c.name === columnName))
+          columnQueries.push(
+            handler
+              .getOrCreateQueryRunner()
+              .queryBuilder.dropColumnQuery(columnName, tableName)
+          );
+      }
 
-          if (err) return { err };
-        }
+      if (columnQueries.length) {
+        const res = await handler
+          .getOrCreateQueryRunner()
+          .columnSynchronizeQueries(columnQueries);
+
+        if (res.err) return { err: res.err };
       }
     } else {
       const { err } = await handler

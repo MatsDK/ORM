@@ -1,8 +1,12 @@
-export interface ColumnOptions {
+export interface ColumnDecoratorOptions {
   name?: string;
   array?: boolean;
   nullable?: boolean;
   default?: any;
+}
+
+export interface ColumnOptions extends ColumnDecoratorOptions {
+  arrayDepth?: number;
 }
 
 export type typeFunctionOrOptions =
@@ -11,7 +15,7 @@ export type typeFunctionOrOptions =
 
 export type ColumnType = (
   typeFunctionOrOptions?: typeFunctionOrOptions,
-  maybeOptions?: ColumnOptions
+  maybeOptions?: ColumnDecoratorOptions
 ) => PropertyDecorator;
 
 export interface TableOptions {

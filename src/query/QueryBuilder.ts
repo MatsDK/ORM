@@ -47,13 +47,25 @@ export class QueryBuilder {
       query += ` ALTER COLUMN "${column.name}" SET NOT NULL`;
     }
 
-    query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}`;
-    query += `  USING "${column.name}"::${column.type}`;
+    query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}${
+      column.options.array ? "[]" : ""
+    }`;
+    query += `  USING "${column.name}"::${column.type}${
+      column.options.array ? "[]" : ""
+    };`;
 
     return query;
   }
 
   dropColumnQuery(columnName: string, tableName: string): string {
-    return `ALTER TABLE "${tableName}" DROP COLUMN "${columnName}"`;
+    return `ALTER TABLE "${tableName}" DROP COLUMN "${columnName}";`;
+  }
+
+  bundleQueries(queries: string[]): string {
+    let query = `BEGIN ;`;
+    queries.forEach((q) => (query += `${q}`));
+    query += `COMMIT ;`;
+
+    return query;
   }
 }

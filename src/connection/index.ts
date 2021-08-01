@@ -8,8 +8,9 @@ interface ConnectionOptions extends ConnData {
 }
 
 interface ConnData {
+  logQueries?: boolean;
+  synchronize?: boolean;
   tables: Function[];
-  synchronize: boolean;
   host: string;
   port: number;
   password: string;
@@ -25,9 +26,9 @@ export type QueryRunnerResult =
 export class Connection {
   tables: { [key: string]: any } = {};
   connData: ConnObject;
-  conn: Client;
+  #conn: Client;
 
-  constructor({ tables, ...rest }: ConnectionOptions) {
+  constructor({ tables, logQueries = false, ...rest }: ConnectionOptions) {
     const { metaDataStore, setConnection } = getOrCreateOrmHandler();
 
     for (const table of tables) {
@@ -38,10 +39,20 @@ export class Connection {
       if (name) this.tables[name] = table;
     }
 
-    const { username, ...ConnData } = rest;
-    this.connData = { user: username, tables, ...ConnData };
+    const { username, synchronize = false, ...ConnData } = rest;
+    this.connData = {
+      user: username,
+      synchronize,
+      tables,
+      logQueries,
+      ...ConnData,
+    };
 
     getOrCreateOrmHandler().setConnection(this);
+  }
+
+  getConn() {
+    return this.#conn;
   }
 
   connect(cb?: () => void) {
@@ -52,7 +63,7 @@ export class Connection {
       c.connect((err) => {
         if (err) rej(err);
 
-        this.conn = c;
+        this.#conn = c;
         getOrCreateOrmHandler().setConnection(this);
 
         if (this.connData.synchronize) this.#synchronize();

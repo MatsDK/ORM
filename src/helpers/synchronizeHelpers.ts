@@ -8,6 +8,7 @@ export const columnHasChanged = (
   column.type !== dbColumn.columnType ||
   column.options.nullable !== dbColumn.isNullable ||
   column.options.array !== dbColumn.array;
+// column.options.arrayDepth !== dbColumn.array;
 
 export type columnRowsType = {
   columnName: string;

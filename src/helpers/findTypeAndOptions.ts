@@ -1,5 +1,9 @@
 import { ColumnTypes, TypeClass } from "../db_types";
-import { typeFunctionOrOptions, ColumnOptions } from "./decoratorsTypes";
+import {
+  typeFunctionOrOptions,
+  ColumnOptions,
+  ColumnType,
+} from "./decoratorsTypes";
 import { bannedTypes } from "./returnTypes";
 
 type findTypeAndOptions = (params: {
@@ -27,7 +31,10 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
     if (thisType) {
       if (Array.isArray(thisType)) {
         options.array = true;
-        thisType = thisType[0];
+
+        const { depth, type } = findArrayTypeAndDepth(thisType);
+        thisType = type;
+        options.arrayDepth = depth;
       }
 
       type =
@@ -61,3 +68,18 @@ const findTypeWithConstructor = (
   else if (constructor.name === "Boolean") return "bool";
   else if (constructor.name === "Date") return "date";
 };
+
+type ArrayType = (ColumnTypes | Function)[];
+const findArrayTypeAndDepth = (
+  thisArray: ArrayType,
+  depth = 1
+): { depth: number; type: ColumnTypes } =>
+  Array.isArray(thisArray[0])
+    ? findArrayTypeAndDepth(thisArray[0], depth + 1)
+    : {
+        depth,
+        type:
+          typeof thisArray[0] === "function"
+            ? (new (thisArray[0] as any)() as TypeClass).type
+            : thisArray[0],
+      };

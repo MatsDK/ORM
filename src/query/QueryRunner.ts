@@ -1,26 +1,37 @@
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
+import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
 
 export class QueryRunner {
-  conn: Client | undefined;
+  #conn: Client | undefined;
 
   queryBuilder: QueryBuilder = new QueryBuilder();
 
   constructor(conn: Client | undefined) {
-    this.conn = conn;
+    this.#conn = conn;
   }
 
   async query(query: string): Promise<any> {
-    if (!this.conn) return { rows: undefined, err: "There is no connection" };
+    if (!this.#conn) return { rows: undefined, err: "There is no connection" };
 
-    console.log("Query: ", query);
+    getOrCreateOrmHandler().connectionHandler?.connData.logQueries &&
+      console.log("Query: ", query);
+
     try {
-      return { ...(await this.conn!.query(query)), err: undefined };
+      return { ...(await this.#conn!.query(query)), err: undefined };
     } catch (error) {
       return { err: error.message, rows: undefined };
     }
+  }
+
+  async columnSynchronizeQueries(
+    queries: string[]
+  ): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.bundleQueries(queries);
+
+    return await this.query(query);
   }
 
   async getTablesInDatabase(): Promise<QueryRunnerResult> {

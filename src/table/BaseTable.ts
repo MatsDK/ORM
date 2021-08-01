@@ -3,9 +3,10 @@ export class BaseTable {
 
   constructor() {
     this.target = this.constructor.name;
+    console.log(this.constructor);
   }
 
-  findMany() {
-    console.log("find many");
+  static findMany() {
+    console.log("find many", this.name);
   }
 }
