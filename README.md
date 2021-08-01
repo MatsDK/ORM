@@ -1,7 +1,5 @@
 # PostgreSQL ORM
 
----
-
 ### **Orm created for PostreSQL**
 
 Features:

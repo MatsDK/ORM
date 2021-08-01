@@ -7,12 +7,12 @@ import { Photo } from "./Photo";
 
 @Table({ name: "User21" })
 export class User extends BaseTable {
-  @Column({ nullable: false })
+  @Column(() => Text, { nullable: false })
   userName: string;
 
   @Column(() => Int, { name: "ID", nullable: false })
   id: number;
 
-  @Relation(() => Photo, { name: "Photo" })
-  photo: Photo;
+  @Relation(() => [Photo], { name: "PHOTOS" })
+  photo: Photo[];
 }

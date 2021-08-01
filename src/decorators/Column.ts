@@ -12,9 +12,10 @@ export const Column: ColumnType = (
 
     const { getType, options } = findTypeAndOptoins({
       typeFunctionOrOptions,
-      Columnoptions: maybeOptions || {},
+      options: maybeOptions || {},
       propertyKey,
       targetObject: target,
+      relation: false,
     });
 
     getOrCreateOrmHandler().metaDataStore.addColumn({

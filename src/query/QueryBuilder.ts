@@ -1,7 +1,16 @@
-import { ColumnType, TableType } from "../types";
+import {
+  ColumnType,
+  CreateFindQueryParams,
+  CreateQueryReturnType,
+  TableType,
+} from "../types";
 
 export class QueryBuilder {
   constructor() {}
+
+  createFindQuery({ tableName }: CreateFindQueryParams): CreateQueryReturnType {
+    return { query: `SELECT * FROM "${tableName}";`, params: [] };
+  }
 
   findTablesQuery(): string {
     let query = `SELECT table_name FROM information_schema.tables `;

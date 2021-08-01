@@ -1,6 +1,5 @@
 import "reflect-metadata";
 import { Connection } from "../src/connection";
-import { getOrCreateOrmHandler } from "../src/lib/Global";
 import { User } from "./schemas/User";
 
 (async () => {
@@ -19,7 +18,11 @@ import { User } from "./schemas/User";
     console.log(">> connected to db");
   });
 
-  // User.findMany();
+  const { rows, err } = await User.findMany();
+  if (err) throw err;
 
-  console.log(getOrCreateOrmHandler().metaDataStore.relations);
+  console.log(rows);
+  // console.log(conn.tables["User21"].findMany());
+
+  // console.log(getOrCreateOrmHandler().metaDataStore.relations);
 })();

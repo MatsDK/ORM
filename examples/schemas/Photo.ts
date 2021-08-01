@@ -5,6 +5,6 @@ import { BaseTable } from "../../src/table/BaseTable";
 
 @Table()
 export class Photo extends BaseTable {
-  @Column()
-  name: string;
+  @Column(() => [Text], { name: "Keywords" })
+  name: string[];
 }

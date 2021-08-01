@@ -1,7 +1,9 @@
+import { findTypeAndOptoins } from "../helpers/findTypeAndOptions";
 import { getOrCreateOrmHandler } from "../lib/Global";
 
-interface RelationOptions {
+export interface RelationOptions {
   name?: string;
+  array?: boolean;
 }
 
 type RelationTypeOrOptions<T> =
@@ -16,12 +18,19 @@ export const Relation = <T>(
   return (target, propertyKey) => {
     if (typeof propertyKey === "symbol") return "Symbol error";
 
-    const options: RelationOptions =
-      (typeof typeFunction === "function" ? maybeOptions : maybeOptions) || {};
+    const { options, getType } = findTypeAndOptoins({
+      propertyKey,
+      targetObject: target,
+      options: maybeOptions || {},
+      typeFunctionOrOptions: typeFunction,
+      relation: true,
+    });
 
     getOrCreateOrmHandler().metaDataStore.addRelation({
-      name: options.name || propertyKey,
+      name: !!options.name ? options.name : propertyKey,
       target: target.constructor.name,
+      type: getType(),
+      options,
     });
   };
 };

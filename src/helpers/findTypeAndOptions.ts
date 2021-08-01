@@ -8,39 +8,44 @@ import { bannedTypes } from "./returnTypes";
 
 type findTypeAndOptions = (params: {
   typeFunctionOrOptions?: typeFunctionOrOptions;
-  Columnoptions: ColumnOptions;
+  options: ColumnOptions;
   targetObject: Object;
   propertyKey: string;
+  relation: boolean;
 }) => { getType: () => string; options: ColumnOptions };
 
 export const findTypeAndOptoins: findTypeAndOptions = ({
   typeFunctionOrOptions,
-  Columnoptions,
+  options: opt,
   targetObject,
   propertyKey,
+  relation,
 }) => {
-  let type: ColumnTypes | undefined;
+  let type: any;
 
   const options =
     (typeof typeFunctionOrOptions === "function"
-      ? Columnoptions
+      ? opt
       : typeFunctionOrOptions) || {};
 
   if (typeof typeFunctionOrOptions === "function") {
     let thisType = typeFunctionOrOptions();
+
     if (thisType) {
       if (Array.isArray(thisType)) {
         options.array = true;
 
-        const { depth, type } = findArrayTypeAndDepth(thisType);
-        thisType = type;
+        const { depth, type } = findArrayTypeAndDepth(thisType, relation);
+        thisType = { name: type };
         options.arrayDepth = depth;
       }
 
-      type =
-        typeof thisType === "function"
-          ? (new (thisType as any)() as TypeClass).type
-          : thisType;
+      if (relation) type = thisType.name;
+      else
+        type =
+          typeof thisType === "function"
+            ? (new (thisType as any)() as TypeClass).type
+            : thisType.name;
     }
   }
 
@@ -48,15 +53,19 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
     ? Reflect.getMetadata("design:type", targetObject, propertyKey)
     : undefined;
 
-  if (reflectMetaDataType && !type && reflectMetaDataType)
+  if (reflectMetaDataType && !type)
     if (!bannedTypes.includes(reflectMetaDataType))
-      type = findTypeWithConstructor(reflectMetaDataType) || undefined;
+      type = relation
+        ? reflectMetaDataType.name
+        : findTypeWithConstructor(reflectMetaDataType) || undefined;
 
   if (typeof type !== "string")
     throw new Error(`Type not found of: ${propertyKey}`);
 
   options.array = !!options.array;
-  options.nullable = !!options.nullable;
+  options.arrayDepth == null && options.array && 1;
+
+  !relation && (options.nullable = !!options.nullable);
 
   return { getType: () => type || "", options };
 };
@@ -72,14 +81,16 @@ const findTypeWithConstructor = (
 type ArrayType = (ColumnTypes | Function)[];
 const findArrayTypeAndDepth = (
   thisArray: ArrayType,
+  relation: boolean,
   depth = 1
-): { depth: number; type: ColumnTypes } =>
+): { depth: number; type: ColumnTypes | string } =>
   Array.isArray(thisArray[0])
-    ? findArrayTypeAndDepth(thisArray[0], depth + 1)
+    ? findArrayTypeAndDepth(thisArray[0], relation, depth + 1)
     : {
         depth,
-        type:
-          typeof thisArray[0] === "function"
-            ? (new (thisArray[0] as any)() as TypeClass).type
-            : thisArray[0],
+        type: relation
+          ? (thisArray[0] as Function).name
+          : typeof thisArray[0] === "function"
+          ? (new (thisArray[0] as any)() as TypeClass).type
+          : thisArray[0],
       };

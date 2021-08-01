@@ -1,8 +1,12 @@
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { ColumnType, TableType } from "../types";
+import { ColumnType, FindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
+
+interface FindManyOptions {
+  tableName: string;
+}
 
 export class QueryRunner {
   #conn: Client | undefined;
@@ -13,17 +17,27 @@ export class QueryRunner {
     this.#conn = conn;
   }
 
-  async query(query: string): Promise<any> {
+  async query(query: string, params?: string[]): Promise<any> {
     if (!this.#conn) return { rows: undefined, err: "There is no connection" };
 
     getOrCreateOrmHandler().connectionHandler?.connData.logQueries &&
       console.log("Query: ", query);
 
     try {
-      return { ...(await this.#conn!.query(query)), err: undefined };
+      return {
+        ...(await this.#conn.query({ text: query, values: params })),
+        err: undefined,
+      };
     } catch (error) {
       return { err: error.message, rows: undefined };
     }
+  }
+
+  async findMany({ tableName }: FindManyOptions): Promise<FindReturnType> {
+    const { query, params } = this.queryBuilder.createFindQuery({ tableName }),
+      { err, rows } = await this.query(query, params);
+
+    return err ? { err, rows: undefined } : { rows };
   }
 
   async columnSynchronizeQueries(

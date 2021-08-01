@@ -1,6 +1,5 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { Client, QueryResult } from "pg";
-import { QueryBuilder } from "../query/QueryBuilder";
 import { synchronize } from "./synchronize";
 
 interface ConnectionOptions extends ConnData {
