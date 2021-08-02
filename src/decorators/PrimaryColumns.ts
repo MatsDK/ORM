@@ -1,9 +1,13 @@
 import { ColumnTypes, TypeClass } from "../db_types";
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { ColumnOptions, ColumnType } from "../helpers/decoratorsTypes";
+import {
+  ColumnOptions,
+  ColumnType,
+  PrimaryColumnType,
+} from "../helpers/decoratorsTypes";
 import { findTypeAndOptoins } from "../helpers/findTypeAndOptions";
 
-export const Column: ColumnType = (
+export const PrimaryColumn: PrimaryColumnType = (
   typeFunctionOrOptions,
   maybeOptions
 ): PropertyDecorator => {
@@ -22,7 +26,7 @@ export const Column: ColumnType = (
       name: options.name || propertyKey,
       target: target.constructor.name,
       type: getType(),
-      options,
+      options: { ...options, primary: true, nullable: false },
     });
   };
 };

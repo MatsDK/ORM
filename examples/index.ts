@@ -22,7 +22,4 @@ import { User } from "./schemas/User";
   if (err) throw err;
 
   console.log(rows);
-  // console.log(conn.tables["User21"].findMany());
-
-  // console.log(getOrCreateOrmHandler().metaDataStore.relations);
 })();

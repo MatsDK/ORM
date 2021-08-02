@@ -7,6 +7,7 @@ export const columnHasChanged = (
 ): boolean =>
   column.type !== dbColumn.columnType ||
   column.options.nullable !== dbColumn.isNullable ||
+  !!column.options.primary !== !!dbColumn.primary ||
   column.options.array !== dbColumn.array;
 // column.options.arrayDepth !== dbColumn.array;
 
@@ -15,10 +16,15 @@ export type columnRowsType = {
   columnType: ColumnTypes;
   isNullable: boolean;
   array: boolean;
+  primary: boolean;
 };
 
-export const formatColumnRows = (rows: any[]): columnRowsType[] => {
+export const formatColumnRows = (
+  rows: any[],
+  primaryKeys: string[]
+): columnRowsType[] => {
   const newRows: columnRowsType[] = [];
+
   for (const { column_name, data_type, is_nullable, udt_name } of rows) {
     newRows.push({
       columnName: column_name,
@@ -30,6 +36,7 @@ export const formatColumnRows = (rows: any[]): columnRowsType[] => {
           : udt_name,
       isNullable: is_nullable === "YES",
       array: data_type === "ARRAY",
+      primary: primaryKeys.includes(column_name),
     });
   }
 

@@ -54,18 +54,18 @@ export class Connection {
     return this.#conn;
   }
 
-  connect(cb?: () => void) {
-    return new Promise((res, rej) => {
+  async connect(cb?: () => void) {
+    return new Promise(async (res, rej) => {
       const { database, host, port, user, password } = this.connData,
         c = new Client({ database, host, port, user, password });
 
-      c.connect((err) => {
+      c.connect(async (err) => {
         if (err) rej(err);
 
         this.#conn = c;
         getOrCreateOrmHandler().setConnection(this);
 
-        if (this.connData.synchronize) this.#synchronize();
+        if (this.connData.synchronize) await this.#synchronize();
 
         if (cb) cb();
         res("Connected to database");

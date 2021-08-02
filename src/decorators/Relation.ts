@@ -1,9 +1,14 @@
+import {
+  ColumnOptions,
+  typeFunctionOrOptions,
+} from "../helpers/decoratorsTypes";
 import { findTypeAndOptoins } from "../helpers/findTypeAndOptions";
 import { getOrCreateOrmHandler } from "../lib/Global";
 
 export interface RelationOptions {
   name?: string;
   array?: boolean;
+  on: { [key: string]: any };
 }
 
 type RelationTypeOrOptions<T> =
@@ -11,7 +16,7 @@ type RelationTypeOrOptions<T> =
   | ((type?: any) => T)
   | ((type?: any) => [T]);
 
-export const Relation = <T>(
+export const Relation = <T extends Function>(
   typeFunction: RelationTypeOrOptions<T>,
   maybeOptions?: RelationOptions
 ): PropertyDecorator => {
@@ -21,8 +26,8 @@ export const Relation = <T>(
     const { options, getType } = findTypeAndOptoins({
       propertyKey,
       targetObject: target,
-      options: maybeOptions || {},
-      typeFunctionOrOptions: typeFunction,
+      options: (maybeOptions || {}) as ColumnOptions,
+      typeFunctionOrOptions: typeFunction as typeFunctionOrOptions,
       relation: true,
     });
 
@@ -30,7 +35,7 @@ export const Relation = <T>(
       name: !!options.name ? options.name : propertyKey,
       target: target.constructor.name,
       type: getType(),
-      options,
+      options: options as any,
     });
   };
 };

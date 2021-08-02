@@ -3,6 +3,11 @@ export interface ColumnDecoratorOptions {
   array?: boolean;
   nullable?: boolean;
   default?: any;
+  primary?: boolean;
+}
+
+export interface PrimaryColumnDecoratorOptions {
+  name?: string;
 }
 
 export interface ColumnOptions extends ColumnDecoratorOptions {
@@ -11,11 +16,20 @@ export interface ColumnOptions extends ColumnDecoratorOptions {
 
 export type typeFunctionOrOptions =
   | ((type?: any) => Function | [Function] | ColumnTypes | [ColumnTypes])
-  | ColumnOptions;
+  | ColumnDecoratorOptions;
+
+export type PrimarytypeFunctionOrOptions =
+  | ((type?: any) => Function | [Function] | ColumnTypes | [ColumnTypes])
+  | PrimaryColumnDecoratorOptions;
 
 export type ColumnType = (
   typeFunctionOrOptions?: typeFunctionOrOptions,
   maybeOptions?: ColumnDecoratorOptions
+) => PropertyDecorator;
+
+export type PrimaryColumnType = (
+  typeFunctionOrOptions?: PrimarytypeFunctionOrOptions,
+  maybeOptions?: PrimaryColumnDecoratorOptions
 ) => PropertyDecorator;
 
 export interface TableOptions {

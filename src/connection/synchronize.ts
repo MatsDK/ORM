@@ -29,7 +29,16 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       if (err) return { err };
       if (!rows) return { err: "Rows not found" };
 
-      const dbColumns = formatColumnRows(rows);
+      let { rows: primaryKeys, err: err1 } = await handler
+        .getOrCreateQueryRunner()
+        .getTablePrimaryColumns(tableName);
+      if (err1) return { err: err1 };
+
+      primaryKeys = primaryKeys?.map(
+        ({ column_name }) => column_name
+      ) as string[];
+
+      const dbColumns = formatColumnRows(rows, primaryKeys);
       const columnQueries: string[] = [];
 
       for (const column of columns) {

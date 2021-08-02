@@ -8,8 +8,17 @@ import {
 export class QueryBuilder {
   constructor() {}
 
-  createFindQuery({ tableName }: CreateFindQueryParams): CreateQueryReturnType {
-    return { query: `SELECT * FROM "${tableName}";`, params: [] };
+  createFindQuery({
+    tableName,
+    columns,
+    relations,
+  }: CreateFindQueryParams): CreateQueryReturnType {
+    return {
+      query: `SELECT ${columns
+        .map((c, idx) => `${c.name}`)
+        .join(", ")} FROM "${tableName}";`,
+      params: [],
+    };
   }
 
   findTablesQuery(): string {
@@ -24,11 +33,21 @@ export class QueryBuilder {
 
     for (const [idx, col] of columns.entries()) {
       query += `${idx !== 0 ? "," : ""} "${col.name}" ${col.type}${
-        !col.options.nullable ? " NOT NULL" : ""
-      }`;
+        col.options.primary ? " PRIMARY KEY" : " "
+      }${!col.options.nullable ? " NOT NULL" : ""}`;
     }
 
     query += ` );`;
+
+    return query;
+  }
+
+  getPrimaryColumnsQuery(tableName: string): string {
+    let query = `SELECT kcu.column_name `;
+    query += `FROM information_schema.table_constraints tco JOIN information_schema.key_column_usage kcu `;
+    query += `ON kcu.constraint_name = tco.constraint_name AND kcu.constraint_schema = tco.constraint_schema `;
+    query += `AND kcu.constraint_name = tco.constraint_name JOIN information_schema.columns i `;
+    query += `ON kcu.column_name = i.column_name WHERE tco.constraint_type = 'PRIMARY KEY' AND tco.table_name = '${tableName}';`;
 
     return query;
   }
@@ -56,12 +75,17 @@ export class QueryBuilder {
       query += ` ALTER COLUMN "${column.name}" SET NOT NULL`;
     }
 
-    query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}${
-      column.options.array ? "[]" : ""
-    }`;
-    query += `  USING "${column.name}"::${column.type}${
-      column.options.array ? "[]" : ""
-    };`;
+    if (column.options.primary) {
+      query += `, DROP COLUMN "${column.name}"`;
+      query += `, ADD COLUMN "${column.name}" ${column.type} PRIMARY KEY;`;
+    } else {
+      query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}${
+        column.options.array ? "[]" : ""
+      };`;
+      query += `  USING "${column.name}"::${column.type}${
+        column.options.array ? "[]" : ""
+      };`;
+    }
 
     return query;
   }

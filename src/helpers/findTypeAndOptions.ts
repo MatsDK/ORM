@@ -23,7 +23,7 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
 }) => {
   let type: any;
 
-  const options =
+  const options: ColumnOptions =
     (typeof typeFunctionOrOptions === "function"
       ? opt
       : typeFunctionOrOptions) || {};
@@ -66,6 +66,7 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
   options.arrayDepth == null && options.array && 1;
 
   !relation && (options.nullable = !!options.nullable);
+  options.primary && (options.nullable = false);
 
   return { getType: () => type || "", options };
 };

@@ -18,6 +18,6 @@ export class BaseTable {
 
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
-      .findMany({ tableName });
+      .findMany({ tableName, tableTarget: this.name });
   }
 }

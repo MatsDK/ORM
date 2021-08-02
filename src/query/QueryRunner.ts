@@ -1,11 +1,21 @@
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
+import {
+  constructQueryReturnTypes,
+  createCondition,
+} from "../helpers/queryHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, FindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
 
 interface FindManyOptions {
   tableName: string;
+  tableTarget: string;
+}
+
+export interface RelationObject {
+  condition: string;
+  columns: ColumnType[];
 }
 
 export class QueryRunner {
@@ -33,11 +43,52 @@ export class QueryRunner {
     }
   }
 
-  async findMany({ tableName }: FindManyOptions): Promise<FindReturnType> {
-    const { query, params } = this.queryBuilder.createFindQuery({ tableName }),
+  async findMany({
+    tableName,
+    tableTarget,
+  }: FindManyOptions): Promise<FindReturnType> {
+    const [_, relations] = Array.from(
+      getOrCreateOrmHandler().metaDataStore.relations
+    ).filter(([relationTarget, _]) => relationTarget === tableTarget)[0];
+
+    const columns = constructQueryReturnTypes(tableName, tableTarget);
+
+    const relationsObjs: RelationObject[] = [];
+    for (const relation of relations) {
+      const relationTable = (Array.from(
+        getOrCreateOrmHandler().metaDataStore.tables
+      ).find(([_, t]) => t.target === relation.type) || [])[1];
+
+      if (!relationTable) continue;
+      const relationColumns = constructQueryReturnTypes(
+        relationTable.name,
+        relation.type
+      );
+
+      const condition = createCondition(
+        relation.options.on,
+        tableName,
+        relationTable.name
+      );
+      relationsObjs.push({ condition, columns: relationColumns });
+    }
+
+    console.log(relationsObjs);
+
+    const { query, params } = this.queryBuilder.createFindQuery({
+        tableName,
+        columns,
+        relations: relationsObjs,
+      }),
       { err, rows } = await this.query(query, params);
 
     return err ? { err, rows: undefined } : { rows };
+  }
+
+  async getTablePrimaryColumns(tableName: string): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.getPrimaryColumnsQuery(tableName);
+
+    return await this.query(query);
   }
 
   async columnSynchronizeQueries(

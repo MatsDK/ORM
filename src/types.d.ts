@@ -1,7 +1,8 @@
 import { Component1 } from ".";
 import { ORMHandler } from "./lib/Handler";
-import { TableOptions } from "./helpers/decoratorsTypes";
+import { ColumnOptions, TableOptions } from "./helpers/decoratorsTypes";
 import { RelationOptions } from "./decorators/Relation";
+import { RelationObject } from "./query/QueryRunner";
 
 export interface GlobalType extends globalThis {
   ORM_HANDLER: ORMHandler;
@@ -32,7 +33,9 @@ export type FindReturnType =
   | { rows: any[]; err?: string };
 
 export interface CreateFindQueryParams {
+  columns: ColumnType[];
   tableName: string;
+  relations: RelationObject[];
 }
 
 export type CreateQueryReturnType = { query: string; params: string[] };

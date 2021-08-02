@@ -5,13 +5,14 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --exec ts-node examples/index.ts"
+    "dev": "tsnd --respawn examples/index.ts"
   },
   "devDependencies": {
     "@types/node": "^16.4.7",
     "@types/pg": "^8.6.1",
     "nodemon": "^2.0.12",
     "ts-node": "^10.1.0",
+    "ts-node-dev": "^1.1.8",
     "typescript": "^4.3.5"
   },
   "dependencies": {
