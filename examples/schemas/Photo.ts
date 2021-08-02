@@ -4,7 +4,7 @@ import { PrimaryColumn } from "../../src/decorators/PrimaryColumns";
 import { Table } from "../../src/decorators/Table";
 import { BaseTable } from "../../src/table/BaseTable";
 
-@Table({ name: "PHOTO" })
+@Table({ name: "Photo" })
 export class Photo extends BaseTable {
   @PrimaryColumn(() => Int)
   id: number;

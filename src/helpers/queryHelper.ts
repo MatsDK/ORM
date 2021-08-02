@@ -1,10 +1,11 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
+import { RelationColumn } from "../query/QueryRunner";
 import { ColumnType } from "../types";
 
 export const constructQueryReturnTypes = (
   tableName: string,
   tableTarget: string
-): ColumnType[] => {
+): RelationColumn[] => {
   const columns: [string, ColumnType][] = JSON.parse(
     JSON.stringify(Array.from(getOrCreateOrmHandler().metaDataStore.columns))
   );
@@ -12,7 +13,11 @@ export const constructQueryReturnTypes = (
   return columns
     .filter(([_, c]) => c.target === tableTarget)
     .map(([_, c]) => c)
-    .map((c) => ({ ...c, name: (c.name = `"${tableName}"."${c.name}"`) }));
+    .map((c) => ({
+      ...c,
+      name: (c.name = `"${tableName}"."${c.name}"`),
+      alias: `__${tableName}__${c.name.split(".")[1].replace(/\"/g, "")}`,
+    }));
 };
 
 export const createCondition = (
@@ -30,4 +35,22 @@ export const createCondition = (
   });
 
   return condition;
+};
+
+export const getRelationCondtionProperties = (
+  condition: string,
+  thisTableName: string
+) => {
+  const [x, y]: string[] = condition.split("=");
+
+  if (x.includes(thisTableName))
+    return {
+      thisTableProperty: x.split(".")[1].replace(/\"/g, ""),
+      relationTableProperty: y.split(".")[1].replace(/\"/g, ""),
+    };
+  else
+    return {
+      thisTableProperty: y.split(".")[1].replace(/\"/g, ""),
+      relationTableProperty: x.split(".")[1].replace(/\"/g, ""),
+    };
 };

@@ -35,7 +35,12 @@ export type FindReturnType =
 export interface CreateFindQueryParams {
   columns: ColumnType[];
   tableName: string;
-  relations: RelationObject[];
+}
+export interface CreateFindRelationRowsQueryParams {
+  tableName: string;
+  columns: ColumnType[];
+  values: any[];
+  propertyKey: string;
 }
 
-export type CreateQueryReturnType = { query: string; params: string[] };
+export type CreateQueryReturnType = { query: string; params: any[] };

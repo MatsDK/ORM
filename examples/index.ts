@@ -19,7 +19,7 @@ import { User } from "./schemas/User";
   });
 
   const { rows, err } = await User.findMany();
-  if (err) throw err;
+  if (err) return console.log("ERROR: ", err);
 
-  console.log(rows);
+  rows?.forEach((r) => console.log(r));
 })();

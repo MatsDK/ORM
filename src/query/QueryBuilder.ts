@@ -1,6 +1,7 @@
 import {
   ColumnType,
   CreateFindQueryParams,
+  CreateFindRelationRowsQueryParams,
   CreateQueryReturnType,
   TableType,
 } from "../types";
@@ -11,14 +12,32 @@ export class QueryBuilder {
   createFindQuery({
     tableName,
     columns,
-    relations,
   }: CreateFindQueryParams): CreateQueryReturnType {
+    let query = `SELECT ${columns.map((c, idx) => `${c.name}`).join(", ")} `;
+
+    query += ` FROM "${tableName}"`;
+
     return {
-      query: `SELECT ${columns
-        .map((c, idx) => `${c.name}`)
-        .join(", ")} FROM "${tableName}";`,
+      query,
       params: [],
     };
+  }
+
+  createFindRelationRowsQuery({
+    columns,
+    tableName,
+    propertyKey,
+    values,
+  }: CreateFindRelationRowsQueryParams): CreateQueryReturnType {
+    let query = `SELECT ${columns
+      .map((c) => `${c.name}`)
+      .join(", ")} FROM "${tableName}" `;
+
+    query += `WHERE "${tableName}"."${propertyKey}" IN (${values
+      .map((_, idx) => `$${idx + 1}`)
+      .join(", ")}); `;
+
+    return { query, params: values };
   }
 
   findTablesQuery(): string {
@@ -81,7 +100,7 @@ export class QueryBuilder {
     } else {
       query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}${
         column.options.array ? "[]" : ""
-      };`;
+      }`;
       query += `  USING "${column.name}"::${column.type}${
         column.options.array ? "[]" : ""
       };`;

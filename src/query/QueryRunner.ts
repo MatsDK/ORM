@@ -1,8 +1,11 @@
+import { highlight } from "cli-highlight";
+import { table } from "console";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
 import {
   constructQueryReturnTypes,
   createCondition,
+  getRelationCondtionProperties,
 } from "../helpers/queryHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, FindReturnType, TableType } from "../types";
@@ -13,9 +16,13 @@ interface FindManyOptions {
   tableTarget: string;
 }
 
+export type RelationColumn = ColumnType & { alias: string };
+
 export interface RelationObject {
   condition: string;
-  columns: ColumnType[];
+  joinedTableName: string;
+  columns: RelationColumn[];
+  propertyKey: string;
 }
 
 export class QueryRunner {
@@ -27,11 +34,14 @@ export class QueryRunner {
     this.#conn = conn;
   }
 
-  async query(query: string, params?: string[]): Promise<any> {
+  async query(query: string, params?: string[]): Promise<QueryRunnerResult> {
     if (!this.#conn) return { rows: undefined, err: "There is no connection" };
 
     getOrCreateOrmHandler().connectionHandler?.connData.logQueries &&
-      console.log("Query: ", query);
+      console.log(
+        "Query: ",
+        highlight(query, { language: "sql", ignoreIllegals: true })
+      );
 
     try {
       return {
@@ -53,6 +63,12 @@ export class QueryRunner {
 
     const columns = constructQueryReturnTypes(tableName, tableTarget);
 
+    const { query, params } = this.queryBuilder.createFindQuery({
+        tableName,
+        columns,
+      }),
+      { err, rows } = await this.query(query, params);
+
     const relationsObjs: RelationObject[] = [];
     for (const relation of relations) {
       const relationTable = (Array.from(
@@ -60,29 +76,70 @@ export class QueryRunner {
       ).find(([_, t]) => t.target === relation.type) || [])[1];
 
       if (!relationTable) continue;
-      const relationColumns = constructQueryReturnTypes(
-        relationTable.name,
-        relation.type
-      );
 
-      const condition = createCondition(
-        relation.options.on,
-        tableName,
-        relationTable.name
-      );
-      relationsObjs.push({ condition, columns: relationColumns });
+      relationsObjs.push({
+        condition: createCondition(
+          relation.options.on,
+          tableName,
+          relationTable.name
+        ),
+        columns: constructQueryReturnTypes(relationTable.name, relation.type),
+        joinedTableName: relationTable.name,
+        propertyKey: relation.name,
+      });
     }
 
-    console.log(relationsObjs);
+    let newRows: any[] = rows || [];
+    for (const relation of relationsObjs) {
+      const { rows: relationRows, err: relationErr } = await this.queryRelation(
+        rows || [],
+        relation,
+        relation.propertyKey
+      );
 
-    const { query, params } = this.queryBuilder.createFindQuery({
-        tableName,
+      newRows =
+        relationRows ||
+        rows?.map((r) => ({ ...r, [relation.propertyKey]: [] })) ||
+        [];
+    }
+
+    return err ? { err, rows: undefined } : { rows: newRows || [] };
+  }
+
+  async queryRelation(
+    rows: any[],
+    { columns, joinedTableName, condition }: RelationObject,
+    propertyKey: string
+  ): Promise<FindReturnType> {
+    const { relationTableProperty, thisTableProperty } =
+      getRelationCondtionProperties(condition, joinedTableName);
+
+    const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
+        tableName: joinedTableName,
         columns,
-        relations: relationsObjs,
+        values: rows.map((r) => r[relationTableProperty]),
+        propertyKey: thisTableProperty,
       }),
-      { err, rows } = await this.query(query, params);
+      { err, rows: relationRows } = await this.query(query, params);
 
-    return err ? { err, rows: undefined } : { rows };
+    if (err) return { err, rows: undefined };
+
+    const dataMap: Map<any, any[]> = new Map();
+    for (const row of relationRows || []) {
+      if (dataMap.has(row[thisTableProperty]))
+        dataMap.set(row[thisTableProperty], [
+          ...(dataMap.get(row[thisTableProperty]) || []),
+          row,
+        ]);
+      else dataMap.set(row[thisTableProperty], [row]);
+    }
+
+    rows = rows.map((r) => ({
+      ...r,
+      [propertyKey]: dataMap.get(r[relationTableProperty]) || [],
+    }));
+
+    return { err: "err", rows };
   }
 
   async getTablePrimaryColumns(tableName: string): Promise<QueryRunnerResult> {
