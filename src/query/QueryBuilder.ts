@@ -53,7 +53,9 @@ export class QueryBuilder {
     for (const [idx, col] of columns.entries()) {
       query += `${idx !== 0 ? "," : ""} "${col.name}" ${col.type}${
         col.options.primary ? " PRIMARY KEY" : " "
-      }${!col.options.nullable ? " NOT NULL" : ""}`;
+      }${col.options.default ? ` DEFAULT ${col.options.default}` : " "}${
+        !col.options.nullable ? " NOT NULL" : ""
+      }`;
     }
 
     query += ` );`;
@@ -71,12 +73,28 @@ export class QueryBuilder {
     return query;
   }
 
+  createSequencesQuery(seq: string[]): string {
+    const query: string[] = [];
+
+    for (const sequence of seq) query.push(`CREATE SEQUENCE ${sequence}`);
+
+    return `${query.join(" UNION ")};`;
+  }
+
+  createDeleteSequencesQuery(seq: string[]): string {
+    const query: string[] = [];
+
+    for (const sequence of seq) query.push(`DROP SEQUENCE ${sequence}`);
+
+    return `${query.join(" UNION ")};`;
+  }
+
   dropTableQuery(tableName: string): string {
     return `DROP TABLE "${tableName}";`;
   }
 
   getColumnsQuery(tableName: string): string {
-    let query = `SELECT column_name, data_type, is_nullable, udt_name `;
+    let query = `SELECT column_name, data_type, is_nullable, udt_name, column_default `;
     return (query += ` FROM information_schema.columns WHERE table_name = '${tableName}';`);
   }
 
@@ -88,23 +106,28 @@ export class QueryBuilder {
   createUpdateColumnQuery(column: ColumnType, tableName: string): string {
     let query = `ALTER TABLE "${tableName}" `;
 
-    if (column.options.nullable) {
-      query += ` ALTER COLUMN "${column.name}" DROP NOT NULL`;
-    } else {
-      query += ` ALTER COLUMN "${column.name}" SET NOT NULL`;
-    }
-
     if (column.options.primary) {
-      query += `, DROP COLUMN "${column.name}"`;
-      query += `, ADD COLUMN "${column.name}" ${column.type} PRIMARY KEY;`;
+      query += ` ADD PRIMARY KEY ("${column.name}")`;
     } else {
+      if (column.options.nullable) {
+        query += ` ALTER COLUMN "${column.name}" DROP NOT NULL`;
+      } else {
+        query += ` ALTER COLUMN "${column.name}" SET NOT NULL`;
+      }
+
       query += `, ALTER COLUMN "${column.name}" TYPE ${column.type}${
         column.options.array ? "[]" : ""
       }`;
       query += `  USING "${column.name}"::${column.type}${
         column.options.array ? "[]" : ""
-      };`;
+      }`;
     }
+
+    if (column.options.default)
+      query += `, ALTER COLUMN "${column.name}" SET DEFAULT ${column.options.default} `;
+    else query += `, ALTER COLUMN "${column.name}" DROP DEFAULT`;
+
+    query += ";";
 
     return query;
   }

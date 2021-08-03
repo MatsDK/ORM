@@ -1,9 +1,15 @@
+import { create } from "domain";
 import { QueryRunnerResult } from ".";
 import {
   formatColumnRows,
   columnHasChanged,
+  getColumnToUpdate,
+  createSequences,
+  deleteSequences,
+  columnRowsType,
 } from "../helpers/synchronizeHelpers";
 import { getOrCreateOrmHandler } from "../lib/Global";
+import { ColumnType } from "../types";
 
 export const synchronize = async (): Promise<{ err: string | undefined }> => {
   const handler = getOrCreateOrmHandler();
@@ -15,6 +21,12 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
 
   if (err) return { err };
   if (!rows) return { err: "Rows not found" };
+
+  let { rows: sequences, err: sequenceErr } = await handler
+    .getOrCreateQueryRunner()
+    .getSequences();
+  if (sequenceErr) return { err: sequenceErr };
+  sequences = sequences?.map((s) => s.relname) || [];
 
   // Loop over tables and if table exists in database check if colums match
   // else create table in database
@@ -29,46 +41,17 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       if (err) return { err };
       if (!rows) return { err: "Rows not found" };
 
-      let { rows: primaryKeys, err: err1 } = await handler
-        .getOrCreateQueryRunner()
-        .getTablePrimaryColumns(tableName);
+      const { dbColumns, err: err1 } = await formatColumnRows(rows, tableName);
       if (err1) return { err: err1 };
 
-      primaryKeys = primaryKeys?.map(
-        ({ column_name }) => column_name
-      ) as string[];
+      if (!(await createSequences(columns, tableName, sequences)))
+        return { err: "Could not create sequences" };
 
-      const dbColumns = formatColumnRows(rows, primaryKeys);
-      const columnQueries: string[] = [];
-
-      for (const column of columns) {
-        if (!dbColumns.find((c) => c.columnName === column.name))
-          columnQueries.push(
-            handler
-              .getOrCreateQueryRunner()
-              .queryBuilder.createColumnQuery(column, tableName)
-          );
-        else if (
-          columnHasChanged(
-            column,
-            dbColumns.find((c) => c.columnName === column.name)!
-          )
-        )
-          columnQueries.push(
-            handler
-              .getOrCreateQueryRunner()
-              .queryBuilder.createUpdateColumnQuery(column, tableName)
-          );
-      }
-
-      for (const { columnName } of dbColumns) {
-        if (!columns.find((c) => c.name === columnName))
-          columnQueries.push(
-            handler
-              .getOrCreateQueryRunner()
-              .queryBuilder.dropColumnQuery(columnName, tableName)
-          );
-      }
+      const columnQueries: string[] = matchColumns(
+        columns,
+        dbColumns,
+        tableName
+      );
 
       if (columnQueries.length) {
         const res = await handler
@@ -77,6 +60,9 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
 
         if (res.err) return { err: res.err };
       }
+
+      if (!(await deleteSequences(sequences, columns)))
+        return { err: "Could not delete sequences" };
     } else {
       const { err } = await handler
         .getOrCreateQueryRunner()
@@ -100,4 +86,46 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
   }
 
   return { err: undefined };
+};
+
+const matchColumns = (
+  columns: ColumnType[],
+  dbColumns: columnRowsType[] | undefined,
+  tableName: string
+): string[] => {
+  const columnQueries: string[] = [],
+    handler = getOrCreateOrmHandler();
+
+  for (const column of columns) {
+    if (!dbColumns!.find((c) => c.columnName === column.name))
+      columnQueries.push(
+        handler
+          .getOrCreateQueryRunner()
+          .queryBuilder.createColumnQuery(column, tableName)
+      );
+    else if (
+      columnHasChanged(
+        column,
+        dbColumns!.find((c) => c.columnName === column.name)!
+      )
+    )
+      columnQueries.push(
+        handler
+          .getOrCreateQueryRunner()
+          .queryBuilder.createUpdateColumnQuery(
+            getColumnToUpdate(column, dbColumns!),
+            tableName
+          )
+      );
+  }
+
+  for (const { columnName } of dbColumns!) {
+    if (!columns.find((c) => c.name === columnName))
+      columnQueries.push(
+        handler
+          .getOrCreateQueryRunner()
+          .queryBuilder.dropColumnQuery(columnName, tableName)
+      );
+  }
+  return columnQueries;
 };

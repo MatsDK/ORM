@@ -23,6 +23,9 @@ export interface RelationObject {
   joinedTableName: string;
   columns: RelationColumn[];
   propertyKey: string;
+  options: {
+    array: boolean;
+  };
 }
 
 export class QueryRunner {
@@ -86,6 +89,9 @@ export class QueryRunner {
         columns: constructQueryReturnTypes(relationTable.name, relation.type),
         joinedTableName: relationTable.name,
         propertyKey: relation.name,
+        options: {
+          array: !!relation.options.array,
+        },
       });
     }
 
@@ -97,9 +103,14 @@ export class QueryRunner {
         relation.propertyKey
       );
 
+      if (relationErr) return { err: relationErr, rows: undefined };
+
       newRows =
         relationRows ||
-        rows?.map((r) => ({ ...r, [relation.propertyKey]: [] })) ||
+        rows?.map((r) => ({
+          ...r,
+          [relation.propertyKey]: relation.options.array ? [] : null,
+        })) ||
         [];
     }
 
@@ -108,38 +119,64 @@ export class QueryRunner {
 
   async queryRelation(
     rows: any[],
-    { columns, joinedTableName, condition }: RelationObject,
+    { columns, joinedTableName, condition, options }: RelationObject,
     propertyKey: string
   ): Promise<FindReturnType> {
     const { relationTableProperty, thisTableProperty } =
       getRelationCondtionProperties(condition, joinedTableName);
 
     const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
-        tableName: joinedTableName,
-        columns,
-        values: rows.map((r) => r[relationTableProperty]),
-        propertyKey: thisTableProperty,
-      }),
-      { err, rows: relationRows } = await this.query(query, params);
+      tableName: joinedTableName,
+      columns,
+      values: rows.map((r) => r[relationTableProperty]),
+      propertyKey: thisTableProperty,
+    });
+    const { err, rows: relationRows } = await this.query(query, params);
 
     if (err) return { err, rows: undefined };
 
-    const dataMap: Map<any, any[]> = new Map();
+    const dataMap: Map<any, any[] | any> = new Map();
+
     for (const row of relationRows || []) {
-      if (dataMap.has(row[thisTableProperty]))
-        dataMap.set(row[thisTableProperty], [
-          ...(dataMap.get(row[thisTableProperty]) || []),
-          row,
-        ]);
-      else dataMap.set(row[thisTableProperty], [row]);
+      if (options.array) {
+        if (dataMap.has(row[thisTableProperty])) {
+          dataMap.set(row[thisTableProperty], [
+            ...(dataMap.get(row[thisTableProperty]) || []),
+            row,
+          ]);
+        } else {
+          dataMap.set(row[thisTableProperty], [row]);
+        }
+      } else if (!dataMap.has(row[thisTableProperty])) {
+        dataMap.set(row[thisTableProperty], row);
+      }
     }
 
-    rows = rows.map((r) => ({
-      ...r,
-      [propertyKey]: dataMap.get(r[relationTableProperty]) || [],
-    }));
+    return {
+      rows: rows.map((r) => ({
+        ...r,
+        [propertyKey]:
+          dataMap.get(r[relationTableProperty]) || (options.array ? [] : null),
+      })),
+    };
+  }
 
-    return { err: "err", rows };
+  async getSequences(): Promise<QueryRunnerResult> {
+    return await this.query(
+      "SELECT c.relname FROM pg_class c WHERE c.relkind = 'S';"
+    );
+  }
+
+  async createSequences(seq: string[]): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.createSequencesQuery(seq);
+
+    return await this.query(query);
+  }
+
+  async deleteSequences(seq: string[]): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.createDeleteSequencesQuery(seq);
+
+    return await this.query(query);
   }
 
   async getTablePrimaryColumns(tableName: string): Promise<QueryRunnerResult> {

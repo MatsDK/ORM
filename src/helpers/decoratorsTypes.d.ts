@@ -4,6 +4,7 @@ export interface ColumnDecoratorOptions {
   nullable?: boolean;
   default?: any;
   primary?: boolean;
+  default?: any;
 }
 
 export interface PrimaryColumnDecoratorOptions {
@@ -12,6 +13,7 @@ export interface PrimaryColumnDecoratorOptions {
 
 export interface ColumnOptions extends ColumnDecoratorOptions {
   arrayDepth?: number;
+  sequence?: boolean;
 }
 
 export type typeFunctionOrOptions =

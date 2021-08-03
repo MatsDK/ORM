@@ -8,26 +8,18 @@ export type ColumnTypes =
   | "float8"
   | "date";
 
-// export const TypeMap: { [key: string]: ColumnTypes } = {
-//   integer: "int",
-//   text: "text",
-//   boolean: "bool",
-//   date: "date",
-//   smallint: "int2",
-//   bigint: "int8",
-//   "double precision": "float",
-//   real: "float4",
-// };
-
 export class TypeClass {
   type: ColumnTypes;
+  sequence?: boolean;
+}
+
+export class ID {
+  type: ColumnTypes = "int4";
+  sequence: boolean = true;
 }
 
 export class Int {
-  type: ColumnTypes;
-  constructor() {
-    this.type = "int4";
-  }
+  type: ColumnTypes = "int4";
 }
 
 export class Int4 {

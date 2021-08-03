@@ -41,11 +41,14 @@ export const findTypeAndOptoins: findTypeAndOptions = ({
       }
 
       if (relation) type = thisType.name;
-      else
-        type =
-          typeof thisType === "function"
-            ? (new (thisType as any)() as TypeClass).type
-            : thisType.name;
+      else {
+        if (typeof thisType === "function") {
+          const thisTypeClass = new (thisType as any)() as TypeClass;
+          type = thisTypeClass.type;
+
+          if (thisTypeClass.sequence) options.sequence = true;
+        } else type = thisType.name;
+      }
     }
   }
 

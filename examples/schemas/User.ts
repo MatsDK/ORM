@@ -1,4 +1,4 @@
-import { Bool, Float4, Int, Int2, Int8, Text } from "../../src/db_types";
+import { Bool, Float4, ID, Int, Int2, Int8, Text } from "../../src/db_types";
 import { Column } from "../../src/decorators/Column";
 import { PrimaryColumn } from "../../src/decorators/PrimaryColumns";
 import { Relation } from "../../src/decorators/Relation";
@@ -8,14 +8,15 @@ import { Photo } from "./Photo";
 
 @Table({ name: "User21" })
 export class User extends BaseTable {
-  @PrimaryColumn(() => Int, { name: "ID" })
+  @PrimaryColumn(() => Int, { name: "id" })
   id: number;
 
   @Column(() => Text, { nullable: false })
   userName: string;
 
   @Relation(() => [Photo], {
-    on: { "User21.ID": "PHOTO.ownerId" },
+    name: "photos",
+    on: { "User21.id": "PHOTO.ownerId" },
   })
-  photos: Photo[];
+  photos21: Photo[];
 }
