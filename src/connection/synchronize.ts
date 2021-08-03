@@ -22,11 +22,19 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
   if (err) return { err };
   if (!rows) return { err: "Rows not found" };
 
+  // Create new sequence that are declared in tables
   let { rows: sequences, err: sequenceErr } = await handler
     .getOrCreateQueryRunner()
     .getSequences();
   if (sequenceErr) return { err: sequenceErr };
   sequences = sequences?.map((s) => s.relname) || [];
+
+  const createSequencesRes = await createSequences(
+    sequences,
+    Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
+  );
+  if (typeof createSequencesRes === "string")
+    return { err: createSequencesRes };
 
   // Loop over tables and if table exists in database check if colums match
   // else create table in database
@@ -44,9 +52,6 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       const { dbColumns, err: err1 } = await formatColumnRows(rows, tableName);
       if (err1) return { err: err1 };
 
-      if (!(await createSequences(columns, tableName, sequences)))
-        return { err: "Could not create sequences" };
-
       const columnQueries: string[] = matchColumns(
         columns,
         dbColumns,
@@ -60,9 +65,6 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
 
         if (res.err) return { err: res.err };
       }
-
-      if (!(await deleteSequences(sequences, columns)))
-        return { err: "Could not delete sequences" };
     } else {
       const { err } = await handler
         .getOrCreateQueryRunner()
@@ -84,6 +86,14 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       if (err) return { err };
     }
   }
+
+  // Delete ununsed sequences after removing their reference in columns
+  const deleteSequencesRes = await deleteSequences(
+    sequences,
+    Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
+  );
+  if (typeof deleteSequencesRes === "string")
+    return { err: deleteSequencesRes };
 
   return { err: undefined };
 };

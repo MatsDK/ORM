@@ -43,7 +43,9 @@ export class QueryRunner {
     getOrCreateOrmHandler().connectionHandler?.connData.logQueries &&
       console.log(
         "Query: ",
-        highlight(query, { language: "sql", ignoreIllegals: true })
+        highlight(query, { language: "sql", ignoreIllegals: true }),
+        "Values:",
+        params
       );
 
     try {

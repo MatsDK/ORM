@@ -8,10 +8,10 @@ import { Photo } from "./Photo";
 
 @Table({ name: "User21" })
 export class User extends BaseTable {
-  @PrimaryColumn(() => Int, { name: "id" })
+  @PrimaryColumn(() => ID, { name: "id" })
   id: number;
 
-  @Column(() => Text, { nullable: false })
+  @Column(() => Text, { nullable: false, default: "usernameDefault" })
   userName: string;
 
   @Relation(() => [Photo], {

@@ -1,3 +1,4 @@
+import { create } from "domain";
 import { ColumnTypes } from "../db_types";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType } from "../types";
@@ -11,8 +12,10 @@ export const columnHasChanged = (
     column.options.nullable !== dbColumn.isNullable ||
     !!column.options.primary !== !!dbColumn.primary ||
     column.options.array !== dbColumn.array ||
-    (typeof column.options.default === "string"
-      ? column.options.default.toLowerCase()
+    (column.options.sequence
+      ? typeof column.options.default === "string"
+        ? column.options.default.toLowerCase()
+        : column.options.default
       : column.options.default) != dbColumn.default
   );
 };
@@ -69,53 +72,56 @@ export const getColumnToUpdate = (
 };
 
 export const createSequences = async (
-  columns: ColumnType[],
-  tableName: string,
-  sequences: string[]
+  sequences: string[],
+  columns: ColumnType[]
 ): Promise<boolean | string> => {
-  const createSequences: string[] = [];
+  const newSequences: string[] = [];
+
   for (const column of columns) {
     if (column.options.sequence) {
-      const sequenceName = `${tableName}_${column.name}_seq`;
+      const tableName = getTableName(column);
+      if (!tableName) continue;
+
+      const sequenceName = `${tableName}__${column.name}__seq`;
       column.options.default = `nextval('${sequenceName}'::regclass)`;
 
       if (!sequences.includes(sequenceName.toLowerCase()))
-        createSequences.push(sequenceName);
-      console.log(column.options.default);
-    } else if (typeof column.options.default === "string") {
-      column.options.default = `'${column.options.default}'`;
-      console.log(column.options.default);
-    }
+        newSequences.push(sequenceName);
+    } else if (typeof column.options.default === "string")
+      column.options.default = `'${column.options.default}'::${column.type}`;
   }
 
   if (!createSequences.length) return true;
 
   const { err: createErr } = await getOrCreateOrmHandler()
     .getOrCreateQueryRunner()
-    .createSequences(createSequences);
+    .createSequences(newSequences);
 
   return createErr || true;
 };
+
+const getTableName = (column: ColumnType): string | undefined =>
+  (Array.from(getOrCreateOrmHandler().metaDataStore.tables).find(
+    ([_, t]) => t.target === column.target
+  ) || [])[0];
 
 export const deleteSequences = async (
   sequences: string[],
   columns: ColumnType[]
 ): Promise<boolean | string> => {
-  let deleteSequences = [...sequences];
+  const deleteSequences: string[] = [...sequences];
 
-  columns.forEach((c) => {
-    if (
-      typeof c.options.default === "string" &&
-      deleteSequences.findIndex((s) => s === c.options.default.toLowerCase())
-    )
-      deleteSequences = deleteSequences.filter(
-        (s) => s == c.options.default.toLowerCase()
+  for (const column of columns) {
+    const idx: boolean | number =
+      typeof column.options.default === "string" &&
+      sequences.findIndex((s) =>
+        column.options.default.toLowerCase().includes(`'${s}'`)
       );
-  });
 
-  if (!deleteSequences.length) {
-    return true;
+    if (idx >= 0 && typeof idx !== "boolean") deleteSequences.splice(idx, 1);
   }
+
+  if (!createSequences.length) return true;
 
   const { err } = await getOrCreateOrmHandler()
     .getOrCreateQueryRunner()
