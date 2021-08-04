@@ -1,4 +1,3 @@
-import { create } from "domain";
 import { ColumnTypes } from "../db_types";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType } from "../types";
@@ -91,7 +90,7 @@ export const createSequences = async (
       column.options.default = `'${column.options.default}'::${column.type}`;
   }
 
-  if (!createSequences.length) return true;
+  if (!newSequences.length) return true;
 
   const { err: createErr } = await getOrCreateOrmHandler()
     .getOrCreateQueryRunner()
@@ -99,11 +98,6 @@ export const createSequences = async (
 
   return createErr || true;
 };
-
-const getTableName = (column: ColumnType): string | undefined =>
-  (Array.from(getOrCreateOrmHandler().metaDataStore.tables).find(
-    ([_, t]) => t.target === column.target
-  ) || [])[0];
 
 export const deleteSequences = async (
   sequences: string[],
@@ -121,7 +115,7 @@ export const deleteSequences = async (
     if (idx >= 0 && typeof idx !== "boolean") deleteSequences.splice(idx, 1);
   }
 
-  if (!createSequences.length) return true;
+  if (!deleteSequences.length) return true;
 
   const { err } = await getOrCreateOrmHandler()
     .getOrCreateQueryRunner()
@@ -129,3 +123,8 @@ export const deleteSequences = async (
 
   return err || true;
 };
+
+const getTableName = (column: ColumnType): string | undefined =>
+  (Array.from(getOrCreateOrmHandler().metaDataStore.tables).find(
+    ([_, t]) => t.target === column.target
+  ) || [])[0];

@@ -21,7 +21,7 @@ export class ORMHandler {
 
 class MetaDataStore {
   tables: Map<string, TableType> = new Map();
-  columns: Map<string, ColumnType> = new Map();
+  columns: Map<string, ColumnType[]> = new Map();
   relations: Map<string, RelationType[]> = new Map();
 
   addTable(table: TableType) {
@@ -29,7 +29,12 @@ class MetaDataStore {
   }
 
   addColumn(column: ColumnType) {
-    this.columns.set(column.name, column);
+    if (this.columns.has(column.target))
+      this.columns.set(column.target, [
+        column,
+        ...(this.columns.get(column.target) || []),
+      ]);
+    else this.columns.set(column.target, [column]);
   }
 
   addRelation(relation: RelationType) {
@@ -42,8 +47,9 @@ class MetaDataStore {
   }
 
   getColumnsOfTable(table: TableType): ColumnType[] {
-    return Array.from(this.columns)
-      .filter(([_, c]) => c.target === table.target)
-      .map(([_, c]) => c);
+    return this.columns.get(table.target) || [];
+  }
+  getRelationsOfTable(tableTarget: string): RelationType[] {
+    return this.relations.get(tableTarget) || [];
   }
 }

@@ -31,7 +31,10 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
 
   const createSequencesRes = await createSequences(
     sequences,
-    Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
+    Array.from(handler.metaDataStore.columns).reduce(
+      (a: ColumnType[], c: [any, ColumnType[]]) => [...a, ...c[1]],
+      []
+    )
   );
   if (typeof createSequencesRes === "string")
     return { err: createSequencesRes };
@@ -90,7 +93,11 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
   // Delete ununsed sequences after removing their reference in columns
   const deleteSequencesRes = await deleteSequences(
     sequences,
-    Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
+    Array.from(handler.metaDataStore.columns).reduce(
+      (a: ColumnType[], c: [any, ColumnType[]]) => [...a, ...c[1]],
+      []
+    )
+    // Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
   );
   if (typeof deleteSequencesRes === "string")
     return { err: deleteSequencesRes };

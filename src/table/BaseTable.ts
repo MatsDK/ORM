@@ -6,10 +6,9 @@ export class BaseTable {
 
   constructor() {
     this.target = this.constructor.name;
-    // console.log(this.constructor);
   }
 
-  static async findMany(): Promise<FindReturnType> {
+  static async findMany<T>(): Promise<FindReturnType<T>> {
     const tableName: string | undefined = (Array.from(
       getOrCreateOrmHandler().metaDataStore.tables
     ).find(([_, t]) => t.target === this.name) || [undefined])[0];

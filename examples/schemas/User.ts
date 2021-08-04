@@ -14,9 +14,12 @@ export class User extends BaseTable {
   @Column(() => Text, { nullable: false, default: "usernameDefault" })
   userName: string;
 
+  @Column(() => Int, { name: "age", nullable: true, default: 18 })
+  age: number;
+
   @Relation(() => [Photo], {
     name: "photos",
-    on: { "User21.id": "PHOTO.ownerId" },
+    on: { "User21.id": "Photo.userId" },
   })
-  photos21: Photo[];
+  photos: Photo[];
 }

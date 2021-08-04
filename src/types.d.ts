@@ -28,8 +28,11 @@ export interface RelationType {
   options: RelationOptions;
 }
 
-export type FindReturnType =
-  | { rows: undefined; err: string }
+export type FindReturnType<T> =
+  | { rows: T | undefined; err: string }
+  | { rows: T[]; err?: string };
+export type QuerryRunnerFindReturnType =
+  | { rows: any; err: string }
   | { rows: any[]; err?: string };
 
 export interface CreateFindQueryParams {

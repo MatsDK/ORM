@@ -1,14 +1,13 @@
 import { highlight } from "cli-highlight";
-import { table } from "console";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
 import {
   constructQueryReturnTypes,
-  createCondition,
   getRelationCondtionProperties,
+  constructRelationObjs,
 } from "../helpers/queryHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { ColumnType, FindReturnType, TableType } from "../types";
+import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
 
 interface FindManyOptions {
@@ -19,8 +18,11 @@ interface FindManyOptions {
 export type RelationColumn = ColumnType & { alias: string };
 
 export interface RelationObject {
-  condition: string;
-  joinedTableName: string;
+  condition: { [key: string]: string };
+  joinedTable: {
+    name: string;
+    targetName: string;
+  };
   columns: RelationColumn[];
   propertyKey: string;
   options: {
@@ -45,7 +47,7 @@ export class QueryRunner {
         "Query: ",
         highlight(query, { language: "sql", ignoreIllegals: true }),
         "Values:",
-        params
+        params || []
       );
 
     try {
@@ -61,11 +63,7 @@ export class QueryRunner {
   async findMany({
     tableName,
     tableTarget,
-  }: FindManyOptions): Promise<FindReturnType> {
-    const [_, relations] = Array.from(
-      getOrCreateOrmHandler().metaDataStore.relations
-    ).filter(([relationTarget, _]) => relationTarget === tableTarget)[0];
-
+  }: FindManyOptions): Promise<QuerryRunnerFindReturnType> {
     const columns = constructQueryReturnTypes(tableName, tableTarget);
 
     const { query, params } = this.queryBuilder.createFindQuery({
@@ -74,35 +72,17 @@ export class QueryRunner {
       }),
       { err, rows } = await this.query(query, params);
 
-    const relationsObjs: RelationObject[] = [];
-    for (const relation of relations) {
-      const relationTable = (Array.from(
-        getOrCreateOrmHandler().metaDataStore.tables
-      ).find(([_, t]) => t.target === relation.type) || [])[1];
-
-      if (!relationTable) continue;
-
-      relationsObjs.push({
-        condition: createCondition(
-          relation.options.on,
-          tableName,
-          relationTable.name
-        ),
-        columns: constructQueryReturnTypes(relationTable.name, relation.type),
-        joinedTableName: relationTable.name,
-        propertyKey: relation.name,
-        options: {
-          array: !!relation.options.array,
-        },
-      });
-    }
+    const relations =
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget);
+    const relationsObjs: RelationObject[] = constructRelationObjs(relations);
 
     let newRows: any[] = rows || [];
     for (const relation of relationsObjs) {
       const { rows: relationRows, err: relationErr } = await this.queryRelation(
         rows || [],
         relation,
-        relation.propertyKey
+        relation.propertyKey,
+        tableName
       );
 
       if (relationErr) return { err: relationErr, rows: undefined };
@@ -121,25 +101,57 @@ export class QueryRunner {
 
   async queryRelation(
     rows: any[],
-    { columns, joinedTableName, condition, options }: RelationObject,
-    propertyKey: string
-  ): Promise<FindReturnType> {
+    { columns, joinedTable, condition, options }: RelationObject,
+    propertyKey: string,
+    tableName: string
+  ): Promise<QuerryRunnerFindReturnType> {
     const { relationTableProperty, thisTableProperty } =
-      getRelationCondtionProperties(condition, joinedTableName);
+      getRelationCondtionProperties(condition, joinedTable.name, tableName);
 
-    const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
-      tableName: joinedTableName,
-      columns,
-      values: rows.map((r) => r[relationTableProperty]),
-      propertyKey: thisTableProperty,
-    });
-    const { err, rows: relationRows } = await this.query(query, params);
+    let relationRows: any[] = [];
 
-    if (err) return { err, rows: undefined };
+    if (rows.map((r) => r[relationTableProperty]).length) {
+      const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
+        tableName: joinedTable.name,
+        columns,
+        values: rows.map((r) => r[relationTableProperty]),
+        propertyKey: thisTableProperty,
+      });
+      const { err, rows: relRows } = await this.query(query, params);
+
+      if (err) return { err, rows: undefined };
+      if (relRows) relationRows = relRows;
+    }
+
+    const thisTableRelations =
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
+        joinedTable.targetName
+      );
+    const relationsObjs: RelationObject[] =
+      constructRelationObjs(thisTableRelations);
+
+    let newRows: any[] = relationRows || [];
+    for (const relation of relationsObjs) {
+      const { rows: newRelationRows, err } = await this.queryRelation(
+        relationRows,
+        relation,
+        relation.propertyKey,
+        tableName
+      );
+      if (err) return { err, rows: undefined };
+
+      newRows =
+        newRelationRows ||
+        rows?.map((r: any) => ({
+          ...r,
+          [relation.propertyKey]: relation.options.array ? [] : null,
+        })) ||
+        [];
+    }
 
     const dataMap: Map<any, any[] | any> = new Map();
 
-    for (const row of relationRows || []) {
+    for (const row of newRows || []) {
       if (options.array) {
         if (dataMap.has(row[thisTableProperty])) {
           dataMap.set(row[thisTableProperty], [
