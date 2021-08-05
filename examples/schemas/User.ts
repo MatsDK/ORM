@@ -18,7 +18,6 @@ export class User extends BaseTable {
   age: number;
 
   @Relation(() => [Photo], {
-    name: "photos",
     on: { "User21.id": "Photo.userId" },
   })
   photos: Photo[];

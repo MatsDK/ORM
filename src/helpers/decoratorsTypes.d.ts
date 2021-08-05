@@ -14,6 +14,13 @@ export interface PrimaryColumnDecoratorOptions {
 export interface ColumnOptions extends ColumnDecoratorOptions {
   arrayDepth?: number;
   sequence?: boolean;
+  on?: { [key: string]: string } | ConditionObj;
+}
+
+export interface ConditionObj {
+  type: "equal" | "any";
+  property: string;
+  thisTableProperty: string;
 }
 
 export type typeFunctionOrOptions =

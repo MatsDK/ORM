@@ -11,8 +11,5 @@ export class Topic extends BaseTable {
   id: number;
 
   @Column(() => Text)
-  name: string[];
-
-  @Column(() => Int)
-  photoId: number;
+  name: string;
 }

@@ -28,7 +28,9 @@ export class QueryBuilder {
     tableName,
     propertyKey,
     values,
-  }: CreateFindRelationRowsQueryParams): CreateQueryReturnType {
+  }: CreateFindRelationRowsQueryParams):
+    | CreateQueryReturnType
+    | { query: undefined; params: undefined } {
     let query = `SELECT ${columns
       .map((c) => `${c.name}`)
       .join(", ")} FROM "${tableName}" `;

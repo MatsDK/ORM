@@ -17,7 +17,7 @@ import { User } from "./schemas/User";
   });
 
   await conn.connect(() => {
-    console.log(">> connected to db");
+    console.log("\n>> connected to db\n");
   });
 
   const { rows, err } = await User.findMany<User>();

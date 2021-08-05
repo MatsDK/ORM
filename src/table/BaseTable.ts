@@ -2,10 +2,10 @@ import { getOrCreateOrmHandler } from "../lib/Global";
 import { FindReturnType } from "../types";
 
 export class BaseTable {
-  target: string;
+  #target: string;
 
   constructor() {
-    this.target = this.constructor.name;
+    this.#target = this.constructor.name;
   }
 
   static async findMany<T>(): Promise<FindReturnType<T>> {

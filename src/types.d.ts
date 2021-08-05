@@ -1,6 +1,10 @@
 import { Component1 } from ".";
 import { ORMHandler } from "./lib/Handler";
-import { ColumnOptions, TableOptions } from "./helpers/decoratorsTypes";
+import {
+  ColumnOptions,
+  ConditionObj,
+  TableOptions,
+} from "./helpers/decoratorsTypes";
 import { RelationOptions } from "./decorators/Relation";
 import { RelationObject } from "./query/QueryRunner";
 
@@ -42,8 +46,8 @@ export interface CreateFindQueryParams {
 export interface CreateFindRelationRowsQueryParams {
   tableName: string;
   columns: ColumnType[];
-  values: any[];
   propertyKey: string;
+  values: any[];
 }
 
 export type CreateQueryReturnType = { query: string; params: any[] };

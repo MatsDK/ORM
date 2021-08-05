@@ -1,10 +1,14 @@
 import { highlight } from "cli-highlight";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
+import { ConditionObj } from "../helpers/decoratorsTypes";
 import {
   constructQueryReturnTypes,
   getRelationCondtionProperties,
   constructRelationObjs,
+  getValuesForQuery,
+  alreadyQueried,
+  addRelationRows,
 } from "../helpers/queryHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
@@ -18,7 +22,7 @@ interface FindManyOptions {
 export type RelationColumn = ColumnType & { alias: string };
 
 export interface RelationObject {
-  condition: { [key: string]: string };
+  condition: ConditionObj;
   joinedTable: {
     name: string;
     targetName: string;
@@ -72,9 +76,9 @@ export class QueryRunner {
       }),
       { err, rows } = await this.query(query, params);
 
-    const relations =
-      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget);
-    const relationsObjs: RelationObject[] = constructRelationObjs(relations);
+    const relationsObjs: RelationObject[] = constructRelationObjs(
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget)
+    );
 
     let newRows: any[] = rows || [];
     for (const relation of relationsObjs) {
@@ -103,10 +107,11 @@ export class QueryRunner {
     rows: any[],
     { columns, joinedTable, condition, options }: RelationObject,
     propertyKey: string,
-    tableName: string
+    tableName: string,
+    queriedRelations: string[][] = []
   ): Promise<QuerryRunnerFindReturnType> {
     const { relationTableProperty, thisTableProperty } =
-      getRelationCondtionProperties(condition, joinedTable.name, tableName);
+      getRelationCondtionProperties(condition);
 
     let relationRows: any[] = [];
 
@@ -114,10 +119,18 @@ export class QueryRunner {
       const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
         tableName: joinedTable.name,
         columns,
-        values: rows.map((r) => r[relationTableProperty]),
         propertyKey: thisTableProperty,
+        values: getValuesForQuery(condition, rows, relationTableProperty),
       });
+
+      if (!query) return { err: "Wrong query", rows: undefined };
+
       const { err, rows: relRows } = await this.query(query, params);
+
+      queriedRelations.push([
+        `${tableName}.${relationTableProperty}`,
+        `${joinedTable.name}.${thisTableProperty}`,
+      ]);
 
       if (err) return { err, rows: undefined };
       if (relRows) relationRows = relRows;
@@ -131,13 +144,26 @@ export class QueryRunner {
       constructRelationObjs(thisTableRelations);
 
     let newRows: any[] = relationRows || [];
+
     for (const relation of relationsObjs) {
+      if (
+        alreadyQueried(
+          queriedRelations,
+          joinedTable,
+          thisTableProperty,
+          relation
+        )
+      )
+        continue;
+
       const { rows: newRelationRows, err } = await this.queryRelation(
         relationRows,
         relation,
         relation.propertyKey,
-        tableName
+        tableName,
+        queriedRelations
       );
+
       if (err) return { err, rows: undefined };
 
       newRows =
@@ -166,13 +192,14 @@ export class QueryRunner {
       }
     }
 
-    return {
-      rows: rows.map((r) => ({
-        ...r,
-        [propertyKey]:
-          dataMap.get(r[relationTableProperty]) || (options.array ? [] : null),
-      })),
-    };
+    return addRelationRows(
+      condition,
+      rows,
+      propertyKey,
+      dataMap,
+      relationTableProperty,
+      options
+    );
   }
 
   async getSequences(): Promise<QueryRunnerResult> {

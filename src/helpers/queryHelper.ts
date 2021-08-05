@@ -1,6 +1,7 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { RelationColumn, RelationObject } from "../query/QueryRunner";
-import { ColumnType, RelationType } from "../types";
+import { ColumnType, RelationType, TableType } from "../types";
+import { ConditionObj } from "./decoratorsTypes";
 
 export const constructQueryReturnTypes = (
   tableName: string,
@@ -19,44 +20,10 @@ export const constructQueryReturnTypes = (
     }));
 };
 
-export const createCondition = (
-  obj: { [key: string]: string },
-  tableName1: string,
-  tableName2: string
-): string => {
-  let condition: string = "";
-
-  Object.entries(obj).map(([x, y]) => {
-    const left: string = `"${tableName1}"."${x.split(".")[1]}"`;
-    const right: string = `"${tableName2}"."${y.split(".")[1]}"`;
-
-    condition = `${left}=${right}`;
-  });
-
-  return condition;
-};
-
-export const getRelationCondtionProperties = (
-  condition: { [key: string]: string },
-  thisTableName: string,
-  tableName: string
-) => {
-  const [x, y]: string[] = createCondition(
-    condition,
-    tableName,
-    thisTableName
-  ).split("=");
-
-  return x.includes(thisTableName)
-    ? {
-        thisTableProperty: x.split(".")[1].replace(/\"/g, ""),
-        relationTableProperty: y.split(".")[1].replace(/\"/g, ""),
-      }
-    : {
-        thisTableProperty: y.split(".")[1].replace(/\"/g, ""),
-        relationTableProperty: x.split(".")[1].replace(/\"/g, ""),
-      };
-};
+export const getRelationCondtionProperties = (condition: ConditionObj) => ({
+  relationTableProperty: condition.thisTableProperty.split(".")[1],
+  thisTableProperty: condition.property.split(".")[1],
+});
 
 export const constructRelationObjs = (
   relations: RelationType[]
@@ -71,7 +38,7 @@ export const constructRelationObjs = (
     if (!relationTable) continue;
 
     relationsObjs.push({
-      condition: relation.options.on,
+      condition: relation.options.on as ConditionObj,
       columns: constructQueryReturnTypes(relationTable.name, relation.type),
       joinedTable: {
         targetName: relationTable.target,
@@ -85,3 +52,71 @@ export const constructRelationObjs = (
   }
   return relationsObjs;
 };
+
+export const getValuesForQuery = (
+  condition: ConditionObj,
+  rows: any[],
+  relationTableProperty: string
+): any[] => {
+  let values: any[] = [];
+  if (condition.type === "equal")
+    values = rows.map((r) => r[relationTableProperty]);
+  else if (condition.type === "any")
+    values = Array.from(
+      new Set(
+        rows
+          .map((r) => r[relationTableProperty])
+          .reduce((a: any[], c: any[]) => [...a, ...c], [])
+      )
+    );
+
+  return values;
+};
+
+export const alreadyQueried = (
+  queriedRelations: string[][],
+  joinedTable: { name: string; targetName: string },
+  thisTableProperty: string,
+  relation: RelationObject
+): boolean =>
+  !!queriedRelations.find(([relationTable, thisTable]) => {
+    relationTable.split(".")[0] === joinedTable.name &&
+      relationTable.split(".")[1] === thisTableProperty &&
+      thisTable.split(".")[0] === relation.joinedTable.name &&
+      thisTable.split(".")[1] === relation.propertyKey;
+  });
+
+export const addRelationRows = (
+  condition: ConditionObj,
+  rows: any[],
+  propertyKey: string,
+  dataMap: Map<string, any>,
+  relationTableProperty: string,
+  options: { array: boolean }
+): { rows: any[] } =>
+  condition.type === "equal"
+    ? {
+        rows: rows.map((r) => ({
+          ...r,
+          [propertyKey]:
+            dataMap.get(r[relationTableProperty]) ||
+            (options.array ? [] : null),
+        })),
+      }
+    : {
+        rows: rows.map((r) => {
+          const values = new Set();
+          for (const value of r[relationTableProperty]) {
+            options.array
+              ? dataMap.get(value).forEach(values.add, values)
+              : values.add(dataMap.get(value));
+          }
+
+          return {
+            ...r,
+            [propertyKey]: options.array
+              ? Array.from(values)
+              : Array.from(values)[0],
+          };
+        }),
+      };
