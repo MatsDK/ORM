@@ -9,14 +9,17 @@ import {
   getValuesForQuery,
   alreadyQueried,
   addRelationRows,
-} from "../helpers/queryHelper";
+  deleteProps,
+} from "./queryRelationsHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
+import { FindManyOptions } from "../table/BaseTable";
 
-interface FindManyOptions {
+interface FindManyProperties {
   tableName: string;
   tableTarget: string;
+  options?: FindManyOptions;
 }
 
 export type RelationColumn = ColumnType & { alias: string };
@@ -28,6 +31,7 @@ export interface RelationObject {
     targetName: string;
   };
   columns: RelationColumn[];
+  deleteColumns: string[];
   propertyKey: string;
   options: {
     array: boolean;
@@ -67,8 +71,13 @@ export class QueryRunner {
   async findMany({
     tableName,
     tableTarget,
-  }: FindManyOptions): Promise<QuerryRunnerFindReturnType> {
-    const columns = constructQueryReturnTypes(tableName, tableTarget);
+    options = {},
+  }: FindManyProperties): Promise<QuerryRunnerFindReturnType> {
+    const { columns, deleteColumns } = constructQueryReturnTypes(
+      tableName,
+      tableTarget,
+      options.returning
+    );
 
     const { query, params } = this.queryBuilder.createFindQuery({
         tableName,
@@ -77,16 +86,21 @@ export class QueryRunner {
       { err, rows } = await this.query(query, params);
 
     const relationsObjs: RelationObject[] = constructRelationObjs(
-      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget)
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget),
+      options.returning
     );
 
     let newRows: any[] = rows || [];
     for (const relation of relationsObjs) {
+      if (options.returning && !(options.returning || {})[relation.propertyKey])
+        continue;
+
       const { rows: relationRows, err: relationErr } = await this.queryRelation(
         rows || [],
         relation,
         relation.propertyKey,
-        tableName
+        tableName,
+        (options.returning || {})[relation.propertyKey]
       );
 
       if (relationErr) return { err: relationErr, rows: undefined };
@@ -100,18 +114,36 @@ export class QueryRunner {
         [];
     }
 
-    return err ? { err, rows: undefined } : { rows: newRows || [] };
+    if (err) return { err, rows: undefined };
+
+    return {
+      rows: deleteProps(newRows, deleteColumns),
+    };
   }
 
   async queryRelation(
     rows: any[],
-    { columns, joinedTable, condition, options }: RelationObject,
+    relation: RelationObject,
     propertyKey: string,
     tableName: string,
+    returnProps: any,
     queriedRelations: string[][] = []
   ): Promise<QuerryRunnerFindReturnType> {
+    const { joinedTable, columns, condition, options, deleteColumns } =
+      relation;
+    if (returnProps === true) returnProps = undefined;
+
     const { relationTableProperty, thisTableProperty } =
       getRelationCondtionProperties(condition);
+
+    const thisTableRelations =
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
+        joinedTable.targetName
+      );
+    const relationsObjs: RelationObject[] = constructRelationObjs(
+      thisTableRelations,
+      returnProps
+    );
 
     let relationRows: any[] = [];
 
@@ -136,17 +168,11 @@ export class QueryRunner {
       if (relRows) relationRows = relRows;
     }
 
-    const thisTableRelations =
-      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
-        joinedTable.targetName
-      );
-    const relationsObjs: RelationObject[] =
-      constructRelationObjs(thisTableRelations);
-
     let newRows: any[] = relationRows || [];
 
     for (const relation of relationsObjs) {
       if (
+        (returnProps && !returnProps[relation.propertyKey]) ||
         alreadyQueried(
           queriedRelations,
           joinedTable,
@@ -161,6 +187,7 @@ export class QueryRunner {
         relation,
         relation.propertyKey,
         tableName,
+        (returnProps || {})[relation.propertyKey],
         queriedRelations
       );
 
@@ -198,7 +225,8 @@ export class QueryRunner {
       propertyKey,
       dataMap,
       relationTableProperty,
-      options
+      options,
+      deleteColumns
     );
   }
 

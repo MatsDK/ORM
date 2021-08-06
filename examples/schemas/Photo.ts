@@ -6,7 +6,7 @@ import { Any } from "../../src/query/operators/Any";
 import { BaseTable } from "../../src/table/BaseTable";
 import { Topic } from "./Topic";
 
-@Table({ name: "Photo" })
+@Table({ name: "Photos" })
 export class Photo extends BaseTable {
   @Column(() => Int, { nullable: true })
   id: number;

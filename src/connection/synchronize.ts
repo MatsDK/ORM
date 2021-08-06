@@ -7,7 +7,7 @@ import {
   createSequences,
   deleteSequences,
   columnRowsType,
-} from "../helpers/synchronizeHelpers";
+} from "./helpers";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType } from "../types";
 

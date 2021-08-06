@@ -1,23 +1,58 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { RelationColumn, RelationObject } from "../query/QueryRunner";
+import { RelationColumn, RelationObject } from "./QueryRunner";
 import { ColumnType, RelationType, TableType } from "../types";
-import { ConditionObj } from "./decoratorsTypes";
+import { ConditionObj } from "../helpers/decoratorsTypes";
 
 export const constructQueryReturnTypes = (
   tableName: string,
-  tableTarget: string
-): RelationColumn[] => {
-  const columns: Array<[string, ColumnType[]]> = JSON.parse(
-    JSON.stringify(Array.from(getOrCreateOrmHandler().metaDataStore.columns))
-  );
+  tableTarget: string,
+  returning: any
+): { columns: RelationColumn[]; deleteColumns: string[] } => {
+  const columns = (
+    JSON.parse(
+      JSON.stringify(Array.from(getOrCreateOrmHandler().metaDataStore.columns))
+    ) as Array<[string, ColumnType[]]>
+  ).filter(([targetName, _]) => targetName === tableTarget)[0][1];
 
-  return columns
-    .filter(([targetName, _]) => targetName === tableTarget)[0][1]
-    .map((c) => ({
+  let deleteColumns: string[] = [],
+    newColumns: ColumnType[] = columns;
+
+  if (!returning || returning != true) {
+    const relationCols: string[] = [];
+
+    newColumns = [];
+
+    for (const relation of getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
+      tableTarget
+    )) {
+      relationCols.push(relation.options.on.thisTableProperty.split(".")[1]);
+    }
+
+    Array.from(getOrCreateOrmHandler().metaDataStore.relations)
+      .map(([_, r]) => r)
+      .forEach((relations) => {
+        for (const rel of relations)
+          if (rel.type === tableTarget)
+            relationCols.push(rel.options.on.property.split(".")[1]);
+      });
+
+    for (const col of columns) {
+      if (!!returning[col.name]) newColumns.push(col);
+      else if (relationCols.includes(col.name)) {
+        newColumns.push(col);
+        deleteColumns.push(col.name);
+      }
+    }
+  }
+
+  return {
+    columns: newColumns.map((c) => ({
       ...c,
       name: (c.name = `"${tableName}"."${c.name}"`),
       alias: `__${tableName}__${c.name.split(".")[1].replace(/\"/g, "")}`,
-    }));
+    })),
+    deleteColumns,
+  };
 };
 
 export const getRelationCondtionProperties = (condition: ConditionObj) => ({
@@ -26,7 +61,8 @@ export const getRelationCondtionProperties = (condition: ConditionObj) => ({
 });
 
 export const constructRelationObjs = (
-  relations: RelationType[]
+  relations: RelationType[],
+  returnProps: any
 ): RelationObject[] => {
   const relationsObjs: RelationObject[] = [];
 
@@ -37,9 +73,16 @@ export const constructRelationObjs = (
 
     if (!relationTable) continue;
 
+    const { columns, deleteColumns } = constructQueryReturnTypes(
+      relationTable.name,
+      relation.type,
+      returnProps[relation.name]
+    );
+
     relationsObjs.push({
       condition: relation.options.on as ConditionObj,
-      columns: constructQueryReturnTypes(relationTable.name, relation.type),
+      columns,
+      deleteColumns,
       joinedTable: {
         targetName: relationTable.target,
         name: relationTable.name,
@@ -92,16 +135,25 @@ export const addRelationRows = (
   propertyKey: string,
   dataMap: Map<string, any>,
   relationTableProperty: string,
-  options: { array: boolean }
-): { rows: any[] } =>
-  condition.type === "equal"
+  options: { array: boolean },
+  deleteColumns: string[]
+): { rows: any[] } => {
+  return condition.type === "equal"
     ? {
-        rows: rows.map((r) => ({
-          ...r,
-          [propertyKey]:
-            dataMap.get(r[relationTableProperty]) ||
-            (options.array ? [] : null),
-        })),
+        rows: rows.map((r) => {
+          let value = dataMap.get(r[relationTableProperty]);
+
+          if (value)
+            value = deleteProps(
+              Array.isArray(value) ? value : [value],
+              deleteColumns
+            );
+
+          return {
+            ...r,
+            [propertyKey]: value || (options.array ? [] : null),
+          };
+        }),
       }
     : {
         rows: rows.map((r) => {
@@ -112,11 +164,28 @@ export const addRelationRows = (
               : values.add(dataMap.get(value));
           }
 
+          let value = options.array
+            ? Array.from(values)
+            : Array.from(values)[0];
+
+          value = deleteProps(
+            Array.isArray(value) ? value : [value],
+            deleteColumns
+          );
+
           return {
             ...r,
-            [propertyKey]: options.array
-              ? Array.from(values)
-              : Array.from(values)[0],
+            [propertyKey]: value,
           };
         }),
       };
+};
+
+export const deleteProps = (rows: any[], deleteColumns: string[]): any[] =>
+  rows.map((r) => {
+    deleteColumns.forEach((col) => {
+      delete r[col];
+    });
+
+    return r;
+  });

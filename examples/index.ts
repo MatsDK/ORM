@@ -20,7 +20,12 @@ import { User } from "./schemas/User";
     console.log("\n>> connected to db\n");
   });
 
-  const { rows, err } = await User.findMany<User>();
+  const { rows, err } = await User.findMany<User>({
+    returning: {
+      photos: [{ topics: true, id: true }],
+      id: true,
+    },
+  });
   if (err) return console.log("ERROR: ", err);
 
   if (Array.isArray(rows)) {

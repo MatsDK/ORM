@@ -7,7 +7,7 @@ import {
   ColumnOptions,
   ColumnType,
 } from "./decoratorsTypes";
-import { constructQueryReturnTypes } from "./queryHelper";
+import { constructQueryReturnTypes } from "../query/queryRelationsHelper";
 import { bannedTypes } from "./returnTypes";
 
 type findTypeAndOptions = (params: {
