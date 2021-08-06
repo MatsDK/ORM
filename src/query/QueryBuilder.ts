@@ -7,20 +7,54 @@ import {
 } from "../types";
 
 export class QueryBuilder {
-  constructor() {}
-
   createFindQuery({
     tableName,
     columns,
+    options,
   }: CreateFindQueryParams): CreateQueryReturnType {
-    let query = `SELECT ${columns.map((c, idx) => `${c.name}`).join(", ")} `;
+    let query = `SELECT ${columns.map((c) => `${c.name}`).join(", ")} `;
 
     query += ` FROM "${tableName}"`;
 
+    const { values, query: findQuery } = this.constuctFindConition(
+      options.where
+    );
+
+    if (findQuery) query += ` WHERE ${findQuery}`;
+
+    if (options.limit != null) query += ` LIMIT ${options.limit}`;
+
+    if (options.skip != null) query += ` SKIP ${options.skip}`;
+
     return {
       query,
-      params: [],
+      params: values,
     };
+  }
+
+  constuctFindConition(options: any, values: any[] = []) {
+    let query = "";
+
+    if (Array.isArray(options) && options.length) {
+      let l = 0;
+      options.forEach((o) => (l += Object.keys(o).length));
+
+      if (l) {
+        query += `${options
+          .map(
+            (conditions) => this.constuctFindConition(conditions, values).query
+          )
+          .join(" OR ")}`;
+      }
+    } else if (Object.keys(options).length)
+      query += `(${Object.keys(options)
+        .map((key) => {
+          values.push(options[key]);
+          return `"${key}"=$${values.length}`;
+        })
+        .join(" AND ")})`;
+
+    return { values, query };
   }
 
   createFindRelationRowsQuery({
@@ -28,6 +62,7 @@ export class QueryBuilder {
     tableName,
     propertyKey,
     values,
+    findCondition,
   }: CreateFindRelationRowsQueryParams):
     | CreateQueryReturnType
     | { query: undefined; params: undefined } {
@@ -37,7 +72,15 @@ export class QueryBuilder {
 
     query += `WHERE "${tableName}"."${propertyKey}" IN (${values
       .map((_, idx) => `$${idx + 1}`)
-      .join(", ")}); `;
+      .join(", ")}) `;
+
+    const { query: findConditionQuery, values: newValues } =
+      this.constuctFindConition(findCondition || {}, values);
+
+    if (findConditionQuery) {
+      values = newValues;
+      query += `AND ${findConditionQuery}`;
+    }
 
     return { query, params: values };
   }

@@ -2,6 +2,7 @@ import { getOrCreateOrmHandler } from "../lib/Global";
 import { RelationColumn, RelationObject } from "./QueryRunner";
 import { ColumnType, RelationType, TableType } from "../types";
 import { ConditionObj } from "../helpers/decoratorsTypes";
+import { FindCondition, FindManyOptions } from "../table/BaseTable";
 
 export const constructQueryReturnTypes = (
   tableName: string,
@@ -17,16 +18,14 @@ export const constructQueryReturnTypes = (
   let deleteColumns: string[] = [],
     newColumns: ColumnType[] = columns;
 
-  if (!returning || returning != true) {
+  if (returning && returning != true) {
     const relationCols: string[] = [];
-
     newColumns = [];
 
     for (const relation of getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
       tableTarget
-    )) {
+    ))
       relationCols.push(relation.options.on.thisTableProperty.split(".")[1]);
-    }
 
     Array.from(getOrCreateOrmHandler().metaDataStore.relations)
       .map(([_, r]) => r)
@@ -62,7 +61,8 @@ export const getRelationCondtionProperties = (condition: ConditionObj) => ({
 
 export const constructRelationObjs = (
   relations: RelationType[],
-  returnProps: any
+  returnProps: any,
+  findCondition: any
 ): RelationObject[] => {
   const relationsObjs: RelationObject[] = [];
 
@@ -71,12 +71,16 @@ export const constructRelationObjs = (
       getOrCreateOrmHandler().metaDataStore.tables
     ).find(([_, t]) => t.target === relation.type) || [])[1];
 
+    const thisFindCondition = Array.isArray(findCondition)
+      ? [...findCondition].map((f) => f[relation.name]).filter((f) => !!f)
+      : (findCondition || {})[relation.name];
+
     if (!relationTable) continue;
 
     const { columns, deleteColumns } = constructQueryReturnTypes(
       relationTable.name,
       relation.type,
-      returnProps[relation.name]
+      (returnProps || {})[relation.name]
     );
 
     relationsObjs.push({
@@ -89,6 +93,7 @@ export const constructRelationObjs = (
       },
       propertyKey: relation.name,
       options: {
+        findCondition: thisFindCondition,
         array: !!relation.options.array,
       },
     });
@@ -133,11 +138,14 @@ export const addRelationRows = (
   condition: ConditionObj,
   rows: any[],
   propertyKey: string,
-  dataMap: Map<string, any>,
+  newRows: any[],
   relationTableProperty: string,
   options: { array: boolean },
-  deleteColumns: string[]
+  deleteColumns: string[],
+  thisTableProperty: string
 ): { rows: any[] } => {
+  const dataMap = createDataMap(newRows, options, thisTableProperty);
+
   return condition.type === "equal"
     ? {
         rows: rows.map((r) => {
@@ -149,6 +157,8 @@ export const addRelationRows = (
               deleteColumns
             );
 
+          if (!options.array && value != undefined) value = value[0];
+
           return {
             ...r,
             [propertyKey]: value || (options.array ? [] : null),
@@ -158,13 +168,14 @@ export const addRelationRows = (
     : {
         rows: rows.map((r) => {
           const values = new Set();
+
           for (const value of r[relationTableProperty]) {
             options.array
-              ? dataMap.get(value).forEach(values.add, values)
+              ? (dataMap.get(value) || []).forEach(values.add, values)
               : values.add(dataMap.get(value));
           }
 
-          let value = options.array
+          let value: any = options.array
             ? Array.from(values)
             : Array.from(values)[0];
 
@@ -175,7 +186,7 @@ export const addRelationRows = (
 
           return {
             ...r,
-            [propertyKey]: value,
+            [propertyKey]: options.array ? value : value[0],
           };
         }),
       };
@@ -189,3 +200,51 @@ export const deleteProps = (rows: any[], deleteColumns: string[]): any[] =>
 
     return r;
   });
+
+export const createDataMap = (
+  newRows: any[],
+  options: { array: boolean },
+  thisTableProperty: string
+) => {
+  const dataMap: Map<any, any[] | any> = new Map();
+
+  for (const row of newRows || []) {
+    if (options.array) {
+      if (dataMap.has(row[thisTableProperty])) {
+        dataMap.set(row[thisTableProperty], [
+          ...(dataMap.get(row[thisTableProperty]) || []),
+          row,
+        ]);
+      } else {
+        dataMap.set(row[thisTableProperty], [row]);
+      }
+    } else if (!dataMap.has(row[thisTableProperty])) {
+      dataMap.set(row[thisTableProperty], row);
+    }
+  }
+
+  return dataMap;
+};
+
+export const constructThisQueryOptions = (
+  options: FindManyOptions,
+  relationsObjs: RelationObject[]
+) => {
+  const thisQueryOptions: FindCondition<any> | undefined = Array.isArray(
+    options.where
+  )
+    ? [...options.where]
+    : {
+        ...options.where,
+      };
+
+  for (const { propertyKey } of relationsObjs) {
+    if (Array.isArray(thisQueryOptions))
+      for (const condition of thisQueryOptions)
+        delete (condition as any)[propertyKey];
+    else if ((thisQueryOptions as any)[propertyKey])
+      delete (thisQueryOptions as any)[propertyKey];
+  }
+
+  return thisQueryOptions;
+};

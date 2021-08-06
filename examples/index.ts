@@ -21,8 +21,16 @@ import { User } from "./schemas/User";
   });
 
   const { rows, err } = await User.findMany<User>({
+    where: { id: 1, userName: "admin" },
+    // limit: 2,
     returning: {
-      photos: [{ topics: true, id: true }],
+      photos: [
+        {
+          topics: true,
+          id: true,
+        },
+      ],
+      userName: true,
       id: true,
     },
   });

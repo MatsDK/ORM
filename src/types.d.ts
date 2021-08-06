@@ -7,6 +7,7 @@ import {
 } from "./helpers/decoratorsTypes";
 import { RelationOptions } from "./decorators/Relation";
 import { RelationObject } from "./query/QueryRunner";
+import { FindManyOptions } from "./table/BaseTable";
 
 export interface GlobalType extends globalThis {
   ORM_HANDLER: ORMHandler;
@@ -42,12 +43,15 @@ export type QuerryRunnerFindReturnType =
 export interface CreateFindQueryParams {
   columns: ColumnType[];
   tableName: string;
+  options: FindManyOptions;
 }
+
 export interface CreateFindRelationRowsQueryParams {
   tableName: string;
   columns: ColumnType[];
   propertyKey: string;
   values: any[];
+  findCondition: any;
 }
 
 export type CreateQueryReturnType = { query: string; params: any[] };

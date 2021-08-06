@@ -7,8 +7,19 @@ type ReturnCondition<T> =
     }
   | { [key: string]: boolean | any };
 
+export type FindCondition<T> =
+  | {
+      [P in keyof T]?: ReturnCondition<T[P]> | string | number | boolean;
+    }
+  | {
+      [P in keyof T]?: ReturnCondition<T[P]> | string | number | boolean;
+    }[];
+
 export interface FindManyOptions<Entity = any> {
+  where?: FindCondition<Entity>;
   returning?: ReturnCondition<Entity>;
+  limit?: number;
+  skip?: number;
 }
 
 export class BaseTable {

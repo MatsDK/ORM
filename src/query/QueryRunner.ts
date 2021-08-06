@@ -10,16 +10,31 @@ import {
   alreadyQueried,
   addRelationRows,
   deleteProps,
+  constructThisQueryOptions,
 } from "./queryRelationsHelper";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
-import { FindManyOptions } from "../table/BaseTable";
+import { FindCondition, FindManyOptions } from "../table/BaseTable";
 
 interface FindManyProperties {
   tableName: string;
   tableTarget: string;
   options?: FindManyOptions;
+}
+
+interface QueryNestedRelationsParams {
+  returnProps: any;
+  queriedRelations?: string[][];
+  rows: any[];
+  tables: {
+    thisTableProperty: string;
+    joinedTable: { name: string; targetName: string };
+    tableName: string;
+    relationRows: any[];
+  };
+  findCondition: any;
+  relationsObjs: RelationObject[];
 }
 
 export type RelationColumn = ColumnType & { alias: string };
@@ -35,6 +50,7 @@ export interface RelationObject {
   propertyKey: string;
   options: {
     array: boolean;
+    findCondition: any;
   };
 }
 
@@ -78,19 +94,24 @@ export class QueryRunner {
       tableTarget,
       options.returning
     );
+    const relationsObjs: RelationObject[] = constructRelationObjs(
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget),
+      options.returning,
+      options.where
+    );
 
     const { query, params } = this.queryBuilder.createFindQuery({
         tableName,
         columns,
+        options: {
+          ...options,
+          where: constructThisQueryOptions({ ...options }, relationsObjs),
+        },
       }),
       { err, rows } = await this.query(query, params);
 
-    const relationsObjs: RelationObject[] = constructRelationObjs(
-      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(tableTarget),
-      options.returning
-    );
-
     let newRows: any[] = rows || [];
+
     for (const relation of relationsObjs) {
       if (options.returning && !(options.returning || {})[relation.propertyKey])
         continue;
@@ -142,7 +163,8 @@ export class QueryRunner {
       );
     const relationsObjs: RelationObject[] = constructRelationObjs(
       thisTableRelations,
-      returnProps
+      returnProps,
+      relation.options.findCondition
     );
 
     let relationRows: any[] = [];
@@ -151,6 +173,10 @@ export class QueryRunner {
       const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
         tableName: joinedTable.name,
         columns,
+        findCondition: constructThisQueryOptions(
+          { where: relation.options.findCondition },
+          relationsObjs
+        ),
         propertyKey: thisTableProperty,
         values: getValuesForQuery(condition, rows, relationTableProperty),
       });
@@ -168,7 +194,43 @@ export class QueryRunner {
       if (relRows) relationRows = relRows;
     }
 
-    let newRows: any[] = relationRows || [];
+    const res = await this.queryNestedRelations({
+      returnProps,
+      rows: relationRows,
+      tables: {
+        joinedTable,
+        tableName,
+        relationRows,
+        thisTableProperty,
+      },
+      findCondition: relation.options.findCondition,
+      relationsObjs,
+    });
+    if (!res.rows || res.err) return { err: res.err, rows: undefined };
+    relationRows = res.rows;
+
+    return addRelationRows(
+      condition,
+      rows,
+      propertyKey,
+      relationRows || [],
+      relationTableProperty,
+      options,
+      deleteColumns,
+      thisTableProperty
+    );
+  }
+
+  async queryNestedRelations({
+    returnProps,
+    queriedRelations = [],
+    rows,
+    tables,
+    findCondition,
+    relationsObjs,
+  }: QueryNestedRelationsParams) {
+    const { joinedTable, thisTableProperty, tableName, relationRows } = tables;
+    let newRows = rows;
 
     for (const relation of relationsObjs) {
       if (
@@ -202,32 +264,7 @@ export class QueryRunner {
         [];
     }
 
-    const dataMap: Map<any, any[] | any> = new Map();
-
-    for (const row of newRows || []) {
-      if (options.array) {
-        if (dataMap.has(row[thisTableProperty])) {
-          dataMap.set(row[thisTableProperty], [
-            ...(dataMap.get(row[thisTableProperty]) || []),
-            row,
-          ]);
-        } else {
-          dataMap.set(row[thisTableProperty], [row]);
-        }
-      } else if (!dataMap.has(row[thisTableProperty])) {
-        dataMap.set(row[thisTableProperty], row);
-      }
-    }
-
-    return addRelationRows(
-      condition,
-      rows,
-      propertyKey,
-      dataMap,
-      relationTableProperty,
-      options,
-      deleteColumns
-    );
+    return { err: undefined, rows: newRows };
   }
 
   async getSequences(): Promise<QueryRunnerResult> {
