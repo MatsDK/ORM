@@ -1,3 +1,4 @@
+import { ConditionObj } from "../helpers/decoratorsTypes";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { FindReturnType } from "../types";
 
@@ -9,10 +10,20 @@ type ReturnCondition<T> =
 
 export type FindCondition<T> =
   | {
-      [P in keyof T]?: ReturnCondition<T[P]> | string | number | boolean;
+      [P in keyof T]?:
+        | ReturnCondition<T[P]>
+        | string
+        | number
+        | boolean
+        | ConditionObj;
     }
   | {
-      [P in keyof T]?: ReturnCondition<T[P]> | string | number | boolean;
+      [P in keyof T]?:
+        | ReturnCondition<T[P]>
+        | string
+        | number
+        | boolean
+        | ConditionObj;
     }[];
 
 export interface FindManyOptions<Entity = any> {

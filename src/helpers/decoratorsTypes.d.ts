@@ -18,9 +18,10 @@ export interface ColumnOptions extends ColumnDecoratorOptions {
 }
 
 export interface ConditionObj {
-  type: "equal" | "any";
-  property: string;
-  thisTableProperty: string;
+  name: string;
+  property?: string;
+  thisTableProperty?: string;
+  raw: string;
 }
 
 export type typeFunctionOrOptions =

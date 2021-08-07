@@ -54,10 +54,12 @@ export const constructQueryReturnTypes = (
   };
 };
 
-export const getRelationCondtionProperties = (condition: ConditionObj) => ({
-  relationTableProperty: condition.thisTableProperty.split(".")[1],
-  thisTableProperty: condition.property.split(".")[1],
-});
+export const getRelationCondtionProperties = (condition: ConditionObj) => {
+  return {
+    relationTableProperty: condition.thisTableProperty!.split(".")[1],
+    thisTableProperty: condition.property!.split(".")[1],
+  };
+};
 
 export const constructRelationObjs = (
   relations: RelationType[],
@@ -107,9 +109,9 @@ export const getValuesForQuery = (
   relationTableProperty: string
 ): any[] => {
   let values: any[] = [];
-  if (condition.type === "equal")
+  if (condition.name === "Equal")
     values = rows.map((r) => r[relationTableProperty]);
-  else if (condition.type === "any")
+  else if (condition.name === "any")
     values = Array.from(
       new Set(
         rows
@@ -146,7 +148,7 @@ export const addRelationRows = (
 ): { rows: any[] } => {
   const dataMap = createDataMap(newRows, options, thisTableProperty);
 
-  return condition.type === "equal"
+  return condition.name === "Equal"
     ? {
         rows: rows.map((r) => {
           let value = dataMap.get(r[relationTableProperty]);

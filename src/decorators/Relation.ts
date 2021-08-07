@@ -40,7 +40,7 @@ export const Relation = <T extends Function>(
         options.on = (values[0] as any)(values[1], thisTableProperty[0]);
     } else if (typeof values !== undefined)
       options.on = {
-        type: "equal",
+        name: "Equal",
         property: values,
         thisTableProperty: thisTableProperty[0],
       };

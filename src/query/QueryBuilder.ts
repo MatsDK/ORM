@@ -46,13 +46,19 @@ export class QueryBuilder {
           )
           .join(" OR ")}`;
       }
-    } else if (Object.keys(options).length)
+    } else if (Object.keys(options).length) {
       query += `(${Object.keys(options)
+
         .map((key) => {
-          values.push(options[key]);
-          return `"${key}"=$${values.length}`;
+          if (options[key].name === "Equal") {
+            values.push(options[key].raw);
+            return `"${key}"=$${values.length}`;
+          } else if (options[key].name === "IsNull") {
+            return `"${key}" IS NULL`;
+          }
         })
         .join(" AND ")})`;
+    }
 
     return { values, query };
   }
