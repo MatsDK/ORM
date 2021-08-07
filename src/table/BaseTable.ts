@@ -1,5 +1,5 @@
-import { ConditionObj } from "../helpers/decoratorsTypes";
 import { getOrCreateOrmHandler } from "../lib/Global";
+import { FindOperator } from "../query/operators/FindOperator";
 import { FindReturnType } from "../types";
 
 type ReturnCondition<T> =
@@ -15,7 +15,7 @@ export type FindCondition<T> =
         | string
         | number
         | boolean
-        | ConditionObj;
+        | FindOperator;
     }
   | {
       [P in keyof T]?:
@@ -23,7 +23,7 @@ export type FindCondition<T> =
         | string
         | number
         | boolean
-        | ConditionObj;
+        | FindOperator;
     }[];
 
 export interface FindManyOptions<Entity = any> {

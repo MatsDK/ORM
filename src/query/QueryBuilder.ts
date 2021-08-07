@@ -5,6 +5,7 @@ import {
   CreateQueryReturnType,
   TableType,
 } from "../types";
+import { createCondition, isConditionNOT } from "./queryBuilderHelper";
 
 export class QueryBuilder {
   createFindQuery({
@@ -48,15 +49,7 @@ export class QueryBuilder {
       }
     } else if (Object.keys(options).length) {
       query += `(${Object.keys(options)
-
-        .map((key) => {
-          if (options[key].name === "Equal") {
-            values.push(options[key].raw);
-            return `"${key}"=$${values.length}`;
-          } else if (options[key].name === "IsNull") {
-            return `"${key}" IS NULL`;
-          }
-        })
+        .map((key) => createCondition(options, values, key))
         .join(" AND ")})`;
     }
 

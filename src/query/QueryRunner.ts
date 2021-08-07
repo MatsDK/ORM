@@ -1,7 +1,6 @@
 import { highlight } from "cli-highlight";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
-import { ConditionObj } from "../helpers/decoratorsTypes";
 import {
   constructQueryReturnTypes,
   getRelationCondtionProperties,
@@ -16,6 +15,7 @@ import { getOrCreateOrmHandler } from "../lib/Global";
 import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
 import { FindCondition, FindManyOptions } from "../table/BaseTable";
+import { FindOperator } from "./operators/FindOperator";
 
 interface FindManyProperties {
   tableName: string;
@@ -40,7 +40,7 @@ interface QueryNestedRelationsParams {
 export type RelationColumn = ColumnType & { alias: string };
 
 export interface RelationObject {
-  condition: ConditionObj;
+  condition: FindOperator;
   joinedTable: {
     name: string;
     targetName: string;

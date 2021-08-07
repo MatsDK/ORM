@@ -1,15 +1,15 @@
 import {
   ColumnOptions,
-  ConditionObj,
   typeFunctionOrOptions,
 } from "../helpers/decoratorsTypes";
 import { findTypeAndOptoins } from "../helpers/findTypeAndOptions";
 import { getOrCreateOrmHandler } from "../lib/Global";
+import { FindOperator } from "../query/operators/FindOperator";
 
 export interface RelationOptions {
   name?: string;
   array?: boolean;
-  on: { [key: string]: any } | ConditionObj;
+  on: { [key: string]: any } | FindOperator;
 }
 
 type RelationTypeOrOptions<T> =
@@ -39,11 +39,7 @@ export const Relation = <T extends Function>(
       if (typeof values[0] === "function" && typeof values[1] !== undefined)
         options.on = (values[0] as any)(values[1], thisTableProperty[0]);
     } else if (typeof values !== undefined)
-      options.on = {
-        name: "Equal",
-        property: values,
-        thisTableProperty: thisTableProperty[0],
-      };
+      options.on = new FindOperator("Equal", "", values, thisTableProperty[0]);
 
     getOrCreateOrmHandler().metaDataStore.addRelation({
       name: !!options.name ? options.name : propertyKey,

@@ -2,7 +2,7 @@ import { Bool, Float4, Int, Int2, Int8, Text } from "../../src/db_types";
 import { Column } from "../../src/decorators/Column";
 import { Relation } from "../../src/decorators/Relation";
 import { Table } from "../../src/decorators/Table";
-import { Any } from "../../src/query/operators";
+import { Any } from "../../src/query/operators/operators";
 import { BaseTable } from "../../src/table/BaseTable";
 import { Topic } from "./Topic";
 

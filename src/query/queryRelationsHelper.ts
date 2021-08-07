@@ -1,8 +1,8 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { RelationColumn, RelationObject } from "./QueryRunner";
 import { ColumnType, RelationType, TableType } from "../types";
-import { ConditionObj } from "../helpers/decoratorsTypes";
 import { FindCondition, FindManyOptions } from "../table/BaseTable";
+import { FindOperator } from "./operators/FindOperator";
 
 export const constructQueryReturnTypes = (
   tableName: string,
@@ -24,15 +24,16 @@ export const constructQueryReturnTypes = (
 
     for (const relation of getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
       tableTarget
-    ))
-      relationCols.push(relation.options.on.thisTableProperty.split(".")[1]);
+    )) {
+      relationCols.push(relation.options.on.thisTableProp.split(".")[1]);
+    }
 
     Array.from(getOrCreateOrmHandler().metaDataStore.relations)
       .map(([_, r]) => r)
       .forEach((relations) => {
         for (const rel of relations)
           if (rel.type === tableTarget)
-            relationCols.push(rel.options.on.property.split(".")[1]);
+            relationCols.push(rel.options.on.prop.split(".")[1]);
       });
 
     for (const col of columns) {
@@ -54,10 +55,10 @@ export const constructQueryReturnTypes = (
   };
 };
 
-export const getRelationCondtionProperties = (condition: ConditionObj) => {
+export const getRelationCondtionProperties = (condition: FindOperator) => {
   return {
-    relationTableProperty: condition.thisTableProperty!.split(".")[1],
-    thisTableProperty: condition.property!.split(".")[1],
+    relationTableProperty: condition.thisTableProp!.split(".")[1],
+    thisTableProperty: condition.prop!.split(".")[1],
   };
 };
 
@@ -86,7 +87,7 @@ export const constructRelationObjs = (
     );
 
     relationsObjs.push({
-      condition: relation.options.on as ConditionObj,
+      condition: relation.options.on as FindOperator,
       columns,
       deleteColumns,
       joinedTable: {
@@ -104,14 +105,14 @@ export const constructRelationObjs = (
 };
 
 export const getValuesForQuery = (
-  condition: ConditionObj,
+  condition: FindOperator,
   rows: any[],
   relationTableProperty: string
 ): any[] => {
   let values: any[] = [];
   if (condition.name === "Equal")
     values = rows.map((r) => r[relationTableProperty]);
-  else if (condition.name === "any")
+  else if (condition.name === "Any")
     values = Array.from(
       new Set(
         rows
@@ -137,7 +138,7 @@ export const alreadyQueried = (
   });
 
 export const addRelationRows = (
-  condition: ConditionObj,
+  condition: FindOperator,
   rows: any[],
   propertyKey: string,
   newRows: any[],

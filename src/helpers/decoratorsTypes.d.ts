@@ -1,3 +1,5 @@
+import { FindOperator } from "../query/operators/FindOperator";
+
 export interface ColumnDecoratorOptions {
   name?: string;
   array?: boolean;
@@ -14,14 +16,7 @@ export interface PrimaryColumnDecoratorOptions {
 export interface ColumnOptions extends ColumnDecoratorOptions {
   arrayDepth?: number;
   sequence?: boolean;
-  on?: { [key: string]: string } | ConditionObj;
-}
-
-export interface ConditionObj {
-  name: string;
-  property?: string;
-  thisTableProperty?: string;
-  raw: string;
+  on?: { [key: string]: string } | FindOperator;
 }
 
 export type typeFunctionOrOptions =
