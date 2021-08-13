@@ -24,7 +24,8 @@ export type FindCondition<T> =
         | number
         | boolean
         | FindOperator;
-    }[];
+    }[]
+  | { [key: string]: any };
 
 export interface FindManyOptions<Entity = any> {
   where?: FindCondition<Entity>;

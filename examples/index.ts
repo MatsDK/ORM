@@ -4,6 +4,8 @@ import {
   Between,
   Equal,
   ILike,
+  In,
+  Includes,
   IsNull,
   LessThan,
   LessThanOrEqual,
@@ -32,19 +34,23 @@ import { User } from "./schemas/User";
     console.log("\n>> connected to db\n");
   });
 
-  const { rows, err } = await User.findMany<User>({
-    where: { userName: ILike("b%") },
-    returning: {
-      photos: [
-        {
-          topics: true,
-          id: true,
-        },
-      ],
-      userName: true,
-      id: true,
-    },
+  const { err, rows } = await Photo.findMany<Photo>({
+    where: { Keywords: Includes("text1") },
+    returning: { userId: true, id: true, topics: true },
   });
+  // const { rows, err } = await User.findMany<User>({
+  //   where: { userName: ILike("b%") },
+  //   returning: {
+  //     photos: [
+  //       {
+  //         topics: true,
+  //         id: true,
+  //       },
+  //     ],
+  //     userName: true,
+  //     id: true,
+  //   },
+  // });
   if (err) return console.log("ERROR: ", err);
 
   if (Array.isArray(rows)) {

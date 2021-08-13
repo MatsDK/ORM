@@ -49,3 +49,11 @@ export const Like = (value: string): FindOperator => {
 export const ILike = (value: string): FindOperator => {
   return new FindOperator("ILike", value);
 };
+
+export const In = (values: AnyValue[]): FindOperator => {
+  return new FindOperator("In", values);
+};
+
+export const Includes = (value: AnyValue): FindOperator => {
+  return new FindOperator("Includes", value);
+};

@@ -52,6 +52,23 @@ export const createCondition = (
       options[key].name,
       `"${key}" LIKE '${options[key].raw}'`
     );
+  } else if (options[key].name.includes("Includes")) {
+    values.push(options[key].raw);
+    return isConditionNOT(
+      options[key].name,
+      `$${values.length} = ANY("${key}")`
+    );
+  } else if (options[key].name.includes("In")) {
+    let q = `"${key}" IN (`;
+
+    q += options[key].raw
+      .map((val: any) => {
+        values.push(val);
+        return `$${values.length}`;
+      })
+      .join(", ");
+
+    return `${q})`;
   } else if (options[key].name === "Not") {
     values.push(options[key].raw);
 
