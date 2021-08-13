@@ -1,66 +1,33 @@
 import { highlight } from "cli-highlight";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
+import { getOrCreateOrmHandler } from "../lib/Global";
+import {
+  ColumnType,
+  FindManyProperties,
+  InsertParams,
+  QueryRunnerFindReturnType,
+  RelationObject,
+  TableType,
+} from "../types";
+import { QueryBuilder } from "./QueryBuilder";
+import { QueryRelation } from "./QueryRelation";
 import {
   constructQueryReturnTypes,
-  getRelationCondtionProperties,
   constructRelationObjs,
-  getValuesForQuery,
-  alreadyQueried,
-  addRelationRows,
-  deleteProps,
   constructThisQueryOptions,
+  deleteProps,
 } from "./queryRelationsHelper";
-import { getOrCreateOrmHandler } from "../lib/Global";
-import { ColumnType, QuerryRunnerFindReturnType, TableType } from "../types";
-import { QueryBuilder } from "./QueryBuilder";
-import { FindCondition, FindManyOptions } from "../table/BaseTable";
-import { FindOperator } from "./operators/FindOperator";
-
-interface FindManyProperties {
-  tableName: string;
-  tableTarget: string;
-  options?: FindManyOptions;
-}
-
-interface QueryNestedRelationsParams {
-  returnProps: any;
-  queriedRelations?: string[][];
-  rows: any[];
-  tables: {
-    thisTableProperty: string;
-    joinedTable: { name: string; targetName: string };
-    tableName: string;
-    relationRows: any[];
-  };
-  findCondition: any;
-  relationsObjs: RelationObject[];
-}
-
-export type RelationColumn = ColumnType & { alias: string };
-
-export interface RelationObject {
-  condition: FindOperator;
-  joinedTable: {
-    name: string;
-    targetName: string;
-  };
-  columns: RelationColumn[];
-  deleteColumns: string[];
-  propertyKey: string;
-  options: {
-    array: boolean;
-    findCondition: any;
-  };
-}
 
 export class QueryRunner {
   #conn: Client | undefined;
+  #queryRelationsHandler: QueryRelation;
 
   queryBuilder: QueryBuilder = new QueryBuilder();
 
   constructor(conn: Client | undefined) {
     this.#conn = conn;
+    this.#queryRelationsHandler = new QueryRelation(this);
   }
 
   async query(query: string, params?: string[]): Promise<QueryRunnerResult> {
@@ -88,7 +55,7 @@ export class QueryRunner {
     tableName,
     tableTarget,
     options = {},
-  }: FindManyProperties): Promise<QuerryRunnerFindReturnType> {
+  }: FindManyProperties): Promise<QueryRunnerFindReturnType> {
     const { columns, deleteColumns } = constructQueryReturnTypes(
       tableName,
       tableTarget,
@@ -116,13 +83,14 @@ export class QueryRunner {
       if (options.returning && !(options.returning || {})[relation.propertyKey])
         continue;
 
-      const { rows: relationRows, err: relationErr } = await this.queryRelation(
-        rows || [],
-        relation,
-        relation.propertyKey,
-        tableName,
-        (options.returning || {})[relation.propertyKey]
-      );
+      const { rows: relationRows, err: relationErr } =
+        await this.#queryRelationsHandler.queryRelation(
+          rows || [],
+          relation,
+          relation.propertyKey,
+          tableName,
+          (options.returning || {})[relation.propertyKey]
+        );
 
       if (relationErr) return { err: relationErr, rows: undefined };
 
@@ -142,129 +110,23 @@ export class QueryRunner {
     };
   }
 
-  async queryRelation(
-    rows: any[],
-    relation: RelationObject,
-    propertyKey: string,
-    tableName: string,
-    returnProps: any,
-    queriedRelations: string[][] = []
-  ): Promise<QuerryRunnerFindReturnType> {
-    const { joinedTable, columns, condition, options, deleteColumns } =
-      relation;
-    if (returnProps === true) returnProps = undefined;
+  async insert({ values, tableName }: InsertParams) {
+    if (!Array.isArray(values)) values = [values];
 
-    const { relationTableProperty, thisTableProperty } =
-      getRelationCondtionProperties(condition);
+    if (!values.length) return { rows: [] };
 
-    const thisTableRelations =
-      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(
-        joinedTable.targetName
-      );
-    const relationsObjs: RelationObject[] = constructRelationObjs(
-      thisTableRelations,
-      returnProps,
-      relation.options.findCondition
-    );
+    const insertColumns: Set<string> = new Set();
 
-    let relationRows: any[] = [];
+    for (const row of values as any[])
+      Object.keys(row).forEach((key: string) => insertColumns.add(key));
 
-    if (rows.map((r) => r[relationTableProperty]).length) {
-      const { query, params } = this.queryBuilder.createFindRelationRowsQuery({
-        tableName: joinedTable.name,
-        columns,
-        findCondition: constructThisQueryOptions(
-          { where: relation.options.findCondition },
-          relationsObjs
-        ),
-        propertyKey: thisTableProperty,
-        values: getValuesForQuery(condition, rows, relationTableProperty),
-      });
-
-      if (!query) return { err: "Wrong query", rows: undefined };
-
-      const { err, rows: relRows } = await this.query(query, params);
-
-      queriedRelations.push([
-        `${tableName}.${relationTableProperty}`,
-        `${joinedTable.name}.${thisTableProperty}`,
-      ]);
-
-      if (err) return { err, rows: undefined };
-      if (relRows) relationRows = relRows;
-    }
-
-    const res = await this.queryNestedRelations({
-      returnProps,
-      rows: relationRows,
-      tables: {
-        joinedTable,
-        tableName,
-        relationRows,
-        thisTableProperty,
-      },
-      findCondition: relation.options.findCondition,
-      relationsObjs,
+    const { query, params } = this.queryBuilder.createInsertQuery({
+      values,
+      tableName,
+      insertColumns: Array.from(insertColumns),
     });
-    if (!res.rows || res.err) return { err: res.err, rows: undefined };
-    relationRows = res.rows;
 
-    return addRelationRows(
-      condition,
-      rows,
-      propertyKey,
-      relationRows || [],
-      relationTableProperty,
-      options,
-      deleteColumns,
-      thisTableProperty
-    );
-  }
-
-  async queryNestedRelations({
-    returnProps,
-    queriedRelations = [],
-    rows,
-    tables,
-    findCondition,
-    relationsObjs,
-  }: QueryNestedRelationsParams) {
-    const { joinedTable, thisTableProperty, tableName, relationRows } = tables;
-    let newRows = rows;
-
-    for (const relation of relationsObjs) {
-      if (
-        (returnProps && !returnProps[relation.propertyKey]) ||
-        alreadyQueried(
-          queriedRelations,
-          joinedTable,
-          thisTableProperty,
-          relation
-        )
-      )
-        continue;
-
-      const { rows: newRelationRows, err } = await this.queryRelation(
-        relationRows,
-        relation,
-        relation.propertyKey,
-        tableName,
-        (returnProps || {})[relation.propertyKey],
-        queriedRelations
-      );
-
-      if (err) return { err, rows: undefined };
-
-      newRows =
-        newRelationRows ||
-        rows?.map((r: any) => ({
-          ...r,
-          [relation.propertyKey]: relation.options.array ? [] : null,
-        })) ||
-        [];
-    }
-
-    return { err: undefined, rows: newRows };
+    return await this.query(query, params);
   }
 
   async getSequences(): Promise<QueryRunnerResult> {

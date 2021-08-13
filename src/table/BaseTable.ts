@@ -1,44 +1,12 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { FindOperator } from "../query/operators/FindOperator";
-import { FindReturnType } from "../types";
-
-type ReturnCondition<T> =
-  | {
-      [P in keyof T]?: ReturnCondition<T[P]> | boolean;
-    }
-  | { [key: string]: boolean | any };
-
-export type FindCondition<T> =
-  | {
-      [P in keyof T]?:
-        | ReturnCondition<T[P]>
-        | string
-        | number
-        | boolean
-        | FindOperator;
-    }
-  | {
-      [P in keyof T]?:
-        | ReturnCondition<T[P]>
-        | string
-        | number
-        | boolean
-        | FindOperator;
-    }[]
-  | { [key: string]: any };
-
-export interface FindManyOptions<Entity = any> {
-  where?: FindCondition<Entity>;
-  returning?: ReturnCondition<Entity>;
-  limit?: number;
-  skip?: number;
-}
+import { FindManyOptions, FindReturnType, InsertValues } from "../types";
 
 export class BaseTable {
-  #target: string;
+  // #target: string;
 
   constructor() {
-    this.#target = this.constructor.name;
+    // this.#target = this.constructor.name;
   }
 
   static async findMany<T extends BaseTable>(
@@ -56,6 +24,39 @@ export class BaseTable {
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
       .findMany({ tableName, tableTarget: this.name, options });
+  }
+
+  static async findOne<T extends BaseTable>(
+    options?: FindManyOptions<T>
+  ): Promise<FindReturnType<T>> {
+    const tableName: string | undefined = (Array.from(
+      getOrCreateOrmHandler().metaDataStore.tables
+    ).find(([_, t]) => t.target === this.name) || [undefined])[0];
+
+    if (!tableName) return { rows: undefined, err: "Table not found" };
+
+    if (options?.returning)
+      options.returning = formatReturning(options.returning);
+
+    if (options) options.limit = 1;
+
+    return await getOrCreateOrmHandler()
+      .getOrCreateQueryRunner()
+      .findMany({ tableName, tableTarget: this.name, options });
+  }
+
+  static async insert<T extends BaseTable>(
+    values?: InsertValues<T>
+  ): Promise<any> {
+    const tableName: string | undefined = (Array.from(
+      getOrCreateOrmHandler().metaDataStore.tables
+    ).find(([_, t]) => t.target === this.name) || [undefined])[0];
+
+    if (!tableName) return { rows: undefined, err: "Table not found" };
+
+    return await getOrCreateOrmHandler()
+      .getOrCreateQueryRunner()
+      .insert({ values: values || [], tableName });
   }
 }
 

@@ -1,8 +1,7 @@
-import { Component1 } from ".";
-import { ORMHandler } from "./lib/Handler";
-import { ColumnOptions, TableOptions } from "./helpers/decoratorsTypes";
+import { AnyValue } from "../types";
 import { RelationOptions } from "./decorators/Relation";
-import { RelationObject } from "./query/QueryRunner";
+import { ColumnOptions, TableOptions } from "./helpers/decoratorsTypes";
+import { ORMHandler } from "./lib/Handler";
 import { FindManyOptions } from "./table/BaseTable";
 
 export interface GlobalType extends globalThis {
@@ -32,7 +31,7 @@ export interface RelationType {
 export type FindReturnType<T> =
   | { rows: T | undefined; err: string }
   | { rows: T[]; err?: string };
-export type QuerryRunnerFindReturnType =
+export type QueryRunnerFindReturnType =
   | { rows: any; err: string }
   | { rows: any[]; err?: string };
 
@@ -53,3 +52,94 @@ export interface CreateFindRelationRowsQueryParams {
 export type CreateQueryReturnType = { query: string; params: any[] };
 
 export type AnyValue = string | number | boolean;
+
+type ReturnCondition<T> =
+  | {
+      [P in keyof T]?: ReturnCondition<T[P]> | boolean;
+    }
+  | { [key: string]: boolean | any };
+
+type findConditionValue = string | number | boolean | FindOperator;
+
+export type FindCondition<T> =
+  | {
+      [P in keyof T]?: ReturnCondition<T[P]> | findConditionValue;
+    }
+  | {
+      [P in keyof T]?: ReturnCondition<T[P]> | findConditionValue;
+    }[]
+  | { [key: string]: findConditionValue };
+
+type OrderValues = "ASC" | "asc" | "DESC" | "desc";
+
+type OrderOption<T = any> =
+  | {
+      [P in keyof T]?: OrderValues;
+    }
+  | { [key: string]: OrderValues };
+
+export interface FindManyOptions<Entity = any> {
+  where?: FindCondition<Entity>;
+  returning?: ReturnCondition<Entity>;
+  limit?: number;
+  skip?: number;
+  order?: OrderOption<Entity>;
+}
+
+export type InsertValues<T = any> =
+  | {
+      [P in keyof T]?: InsertValues<T[P]> | AnyValue;
+    }
+  | {
+      [P in keyof T]?: InsertValues<T[P]> | AnyValue;
+    }[]
+  | { [key: string]: any }
+  | { [key: string]: any }[];
+
+export interface QueryNestedRelationsParams {
+  returnProps: any;
+  queriedRelations?: string[][];
+  rows: any[];
+  tables: {
+    thisTableProperty: string;
+    joinedTable: { name: string; targetName: string };
+    tableName: string;
+    relationRows: any[];
+  };
+  findCondition: any;
+  relationsObjs: RelationObject[];
+}
+
+export interface InsertParams {
+  values: InsertValues;
+  tableName: string;
+}
+
+export interface FindManyProperties {
+  tableName: string;
+  tableTarget: string;
+  options?: FindManyOptions;
+}
+
+export type RelationColumn = ColumnType & { alias: string };
+
+export interface RelationObject {
+  condition: FindOperator;
+  joinedTable: {
+    name: string;
+    targetName: string;
+  };
+  columns: RelationColumn[];
+  deleteColumns: string[];
+  propertyKey: string;
+  options: {
+    array: boolean;
+    findCondition: any;
+  };
+}
+
+export interface createInsertQueryParams {
+  values: InsertValues;
+  tableName: string;
+  insertColumns: string[];
+}

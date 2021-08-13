@@ -2,10 +2,11 @@ import {
   ColumnType,
   CreateFindQueryParams,
   CreateFindRelationRowsQueryParams,
+  createInsertQueryParams,
   CreateQueryReturnType,
   TableType,
 } from "../types";
-import { createCondition, isConditionNOT } from "./queryBuilderHelper";
+import { createCondition, createOrderQuery } from "./queryBuilderHelper";
 
 export class QueryBuilder {
   createFindQuery({
@@ -25,7 +26,10 @@ export class QueryBuilder {
 
     if (options.limit != null) query += ` LIMIT ${options.limit}`;
 
-    if (options.skip != null) query += ` SKIP ${options.skip}`;
+    if (options.skip != null) query += ` OFFSET ${options.skip}`;
+
+    if (options.order && Object.keys(options.order).length)
+      query += createOrderQuery(options.order);
 
     return {
       query,
@@ -82,6 +86,37 @@ export class QueryBuilder {
     }
 
     return { query, params: values };
+  }
+
+  createInsertQuery({
+    values,
+    insertColumns,
+    tableName,
+  }: createInsertQueryParams): {
+    query: string;
+    params: any[];
+  } {
+    const params: any[] = [];
+
+    let query = `INSERT INTO "${tableName}"(${insertColumns
+      .map((key: string) => `"${key}"`)
+      .join(", ")}) VALUES`;
+
+    const rowQueries: string[] = [];
+    for (const row of values as any[]) {
+      const thisRowQuery: string[] = [];
+
+      insertColumns.forEach((key: string) => {
+        params.push(row[key] != null ? row[key] : null);
+        thisRowQuery.push(`$${params.length}`);
+      });
+
+      rowQueries.push(`(${thisRowQuery.join(", ")})`);
+    }
+
+    query += ` ${rowQueries.join(", ")};`;
+
+    return { query, params };
   }
 
   findTablesQuery(): string {

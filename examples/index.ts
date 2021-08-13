@@ -34,28 +34,21 @@ import { User } from "./schemas/User";
     console.log("\n>> connected to db\n");
   });
 
-  const { err, rows } = await Photo.findMany<Photo>({
-    where: { Keywords: Includes("text1") },
-    returning: { userId: true, id: true, topics: true },
-  });
-  // const { rows, err } = await User.findMany<User>({
-  //   where: { userName: ILike("b%") },
-  //   returning: {
-  //     photos: [
-  //       {
-  //         topics: true,
-  //         id: true,
-  //       },
-  //     ],
-  //     userName: true,
-  //     id: true,
-  //   },
+  // const { err, rows } = await Photo.findMany<Photo>({
+  //   where: { id: 1 },
+  //   returning: { userId: true, id: true, topics: true },
+  //   order: { id: "asc" },
   // });
-  if (err) return console.log("ERROR: ", err);
+  const res = await User.insert<User>([
+    { age: 21, userName: null },
+    { userName: "test" },
+  ]);
 
-  if (Array.isArray(rows)) {
-    rows.forEach((r) => {
-      console.log(r);
-    });
-  }
+  if (res.err) return console.log("ERROR: ", res.err);
+
+  // if (Array.isArray(rows)) {
+  //   rows.forEach((r) => {
+  //     console.log(r);
+  //   });
+  // }
 })();

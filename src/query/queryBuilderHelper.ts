@@ -1,3 +1,7 @@
+import { OrderOption } from "../types";
+import { FindOperator } from "./operators/FindOperator";
+import { Equal } from "./operators/operators";
+
 export const isConditionNOT = (
   conditionName: string,
   condition: string
@@ -8,6 +12,9 @@ export const createCondition = (
   values: any[],
   key: string
 ): string => {
+  if (!(options[key] instanceof FindOperator))
+    options[key] = Equal(options[key]);
+
   if (options[key].name === "Equal") {
     values.push(options[key].raw);
 
@@ -77,3 +84,8 @@ export const createCondition = (
 
   return "";
 };
+
+export const createOrderQuery = (order: OrderOption): string =>
+  ` ORDER BY ${Object.keys(order)
+    .map((key: string) => `"${key}" ${order[key]}`)
+    .join(", ")}`;

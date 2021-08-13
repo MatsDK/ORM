@@ -1,7 +1,12 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { RelationColumn, RelationObject } from "./QueryRunner";
-import { ColumnType, RelationType, TableType } from "../types";
-import { FindCondition, FindManyOptions } from "../table/BaseTable";
+import {
+  ColumnType,
+  FindCondition,
+  FindManyOptions,
+  RelationColumn,
+  RelationObject,
+  RelationType,
+} from "../types";
 import { FindOperator } from "./operators/FindOperator";
 
 export const constructQueryReturnTypes = (

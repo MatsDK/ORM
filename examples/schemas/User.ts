@@ -11,7 +11,7 @@ export class User extends BaseTable {
   @PrimaryColumn(() => ID, { name: "id" })
   id: number;
 
-  @Column(() => Text, { nullable: false, default: "usernameDefault" })
+  @Column(() => Text, { nullable: true, default: "usernameDefault" })
   userName: string;
 
   @Column(() => Int, { name: "age", nullable: true, default: 18 })

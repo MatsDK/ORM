@@ -1,13 +1,5 @@
 import { ColumnTypes, TypeClass } from "../db_types";
-import { getOrCreateOrmHandler } from "../lib/Global";
-import { RelationObject } from "../query/QueryRunner";
-import { RelationType } from "../types";
-import {
-  typeFunctionOrOptions,
-  ColumnOptions,
-  ColumnType,
-} from "./decoratorsTypes";
-import { constructQueryReturnTypes } from "../query/queryRelationsHelper";
+import { ColumnOptions, typeFunctionOrOptions } from "./decoratorsTypes";
 import { bannedTypes } from "./returnTypes";
 
 type findTypeAndOptions = (params: {
