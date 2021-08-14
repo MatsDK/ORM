@@ -151,8 +151,10 @@ export class QueryRunner {
     return await this.query(query);
   }
 
-  async getTablePrimaryColumns(tableName: string): Promise<QueryRunnerResult> {
-    const query = this.queryBuilder.getPrimaryColumnsQuery(tableName);
+  async getTablePrimaryColumns(
+    tables: Map<string, TableType>
+  ): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.getPrimaryColumnsQuery(tables);
 
     return await this.query(query);
   }
@@ -186,8 +188,10 @@ export class QueryRunner {
     return await this.query(query);
   }
 
-  async getTableColumns(tableName: string): Promise<QueryRunnerResult> {
-    const query = this.queryBuilder.getColumnsQuery(tableName);
+  async getTableColumns(
+    tables: Map<string, TableType>
+  ): Promise<QueryRunnerResult> {
+    const query = this.queryBuilder.getColumnsQuery(tables);
 
     return await this.query(query);
   }

@@ -38,6 +38,20 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
   if (typeof createSequencesRes === "string")
     return { err: createSequencesRes };
 
+  const { rows: tableColumns, err: tableColumnsErr } = await handler
+    .getOrCreateQueryRunner()
+    .getTableColumns(handler.metaDataStore.tables);
+
+  if (tableColumnsErr || !tableColumns) return { err: "Could not get columns" };
+
+  const { rows: primaryAndUniqueKeys, err: primaryAndUniqueKeysErr } =
+    await getOrCreateOrmHandler()
+      .getOrCreateQueryRunner()
+      .getTablePrimaryColumns(handler.metaDataStore.tables);
+
+  if (primaryAndUniqueKeysErr || !primaryAndUniqueKeys)
+    return { err: primaryAndUniqueKeysErr };
+
   // Loop over tables and if table exists in database check if colums match
   // else create table in database
   for (const [
@@ -47,14 +61,17 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
     const columns = handler.metaDataStore.getColumnsOfTable(tableConfig);
 
     if (rows.find((r) => r.table_name === tableName)) {
-      const { rows, err } = await handler
-        .getOrCreateQueryRunner()
-        .getTableColumns(tableName);
+      const thisTableCols: any[] = tableColumns.filter(
+        (tc) => tc.table_name === tableName
+      );
 
       if (err) return { err };
-      if (!rows) return { err: "Rows not found" };
+      if (!thisTableCols) return { err: "Rows not found" };
 
-      const { dbColumns, err: err1 } = await formatColumnRows(rows, tableName);
+      const { dbColumns, err: err1 } = await formatColumnRows(
+        thisTableCols,
+        primaryAndUniqueKeys.filter((p) => p.table_name === tableName)
+      );
       if (err1) return { err: err1 };
 
       const columnQueries: string[] = matchColumns(
