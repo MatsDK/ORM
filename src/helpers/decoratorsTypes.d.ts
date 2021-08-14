@@ -4,6 +4,7 @@ export interface ColumnDecoratorOptions {
   name?: string;
   array?: boolean;
   nullable?: boolean;
+  unique?: boolean;
   default?: any;
   primary?: boolean;
   default?: any;

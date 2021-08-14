@@ -1,6 +1,6 @@
 import { Bool, Float4, ID, Int, Int2, Int8, Text } from "../../src/db_types";
 import { Column } from "../../src/decorators/Column";
-import { PrimaryColumn } from "../../src/decorators/PrimaryColumns";
+import { PrimaryColumn } from "../../src/decorators/PrimaryColumn";
 import { Relation } from "../../src/decorators/Relation";
 import { Table } from "../../src/decorators/Table";
 import { BaseTable } from "../../src/table/BaseTable";

@@ -10,6 +10,7 @@ export const columnHasChanged = (
     column.type !== dbColumn.columnType ||
     column.options.nullable !== dbColumn.isNullable ||
     !!column.options.primary !== !!dbColumn.primary ||
+    !!column.options?.unique != !!dbColumn.isUnique ||
     column.options.array !== dbColumn.array ||
     (column.options.sequence
       ? typeof column.options.default === "string"
@@ -23,8 +24,9 @@ export type columnRowsType = {
   columnName: string;
   columnType: ColumnTypes;
   isNullable: boolean;
+  isUnique: any;
   array: boolean;
-  primary: boolean;
+  primary: any;
   default: any;
 };
 
@@ -32,12 +34,21 @@ export const formatColumnRows = async (
   rows: any[],
   tableName: string
 ): Promise<{ dbColumns?: columnRowsType[]; err?: string }> => {
-  let { rows: primaryKeys, err: err1 } = await getOrCreateOrmHandler()
+  let { rows: primaryAndUniqueKeys, err: err1 } = await getOrCreateOrmHandler()
     .getOrCreateQueryRunner()
     .getTablePrimaryColumns(tableName);
   if (err1) return { err: err1, dbColumns: undefined };
+  // console.log(primaryAndUniqueKeys);
 
-  primaryKeys = primaryKeys?.map(({ column_name }) => column_name) as string[];
+  const primaryKeys =
+      primaryAndUniqueKeys?.filter(
+        ({ constraint_type }) => constraint_type === "PRIMARY KEY"
+      ) || [],
+    uniqueKeys =
+      primaryAndUniqueKeys?.filter(
+        ({ constraint_type }) => constraint_type === "UNIQUE"
+      ) || [];
+
   const newRows: columnRowsType[] = [];
 
   for (const row of rows) {
@@ -50,8 +61,9 @@ export const formatColumnRows = async (
             : row.udt_name
           : row.udt_name,
       isNullable: row.is_nullable === "YES",
+      isUnique: uniqueKeys.find((k) => k.column_name === row.column_name),
       array: row.data_type === "ARRAY",
-      primary: primaryKeys.includes(row.column_name),
+      primary: primaryKeys.find((k) => k.column_name === row.column_name),
       default: row.column_default,
     });
   }
@@ -66,8 +78,9 @@ export const getColumnToUpdate = (
   const thisDbColumn = dbColumns.find((c) => c.columnName === column.name);
 
   if (thisDbColumn?.primary === column.options.primary) {
-    return { ...column, options: { ...column.options, primary: false } };
-  } else return column;
+    column = { ...column, options: { ...column.options, primary: false } };
+  }
+  return column;
 };
 
 export const createSequences = async (

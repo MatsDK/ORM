@@ -13,7 +13,6 @@ import { ColumnType } from "../types";
 
 export const synchronize = async (): Promise<{ err: string | undefined }> => {
   const handler = getOrCreateOrmHandler();
-  const { metaDataStore } = handler;
 
   const { err, rows }: QueryRunnerResult = await handler
     .getOrCreateQueryRunner()
@@ -41,7 +40,10 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
 
   // Loop over tables and if table exists in database check if colums match
   // else create table in database
-  for (const [tableName, tableConfig] of metaDataStore.tables.entries()) {
+  for (const [
+    tableName,
+    tableConfig,
+  ] of handler.metaDataStore.tables.entries()) {
     const columns = handler.metaDataStore.getColumnsOfTable(tableConfig);
 
     if (rows.find((r) => r.table_name === tableName)) {
@@ -80,7 +82,9 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
   // if table name exists in database but not declared anymore remove table
   for (const { table_name } of rows) {
     if (
-      !Array.from(metaDataStore.tables).find(([_, t]) => t.name === table_name)
+      !Array.from(handler.metaDataStore.tables).find(
+        ([_, t]) => t.name === table_name
+      )
     ) {
       const { err } = await handler
         .getOrCreateQueryRunner()
@@ -97,7 +101,6 @@ export const synchronize = async (): Promise<{ err: string | undefined }> => {
       (a: ColumnType[], c: [any, ColumnType[]]) => [...a, ...c[1]],
       []
     )
-    // Array.from(handler.metaDataStore.columns).map(([_, c]) => c)
   );
   if (typeof deleteSequencesRes === "string")
     return { err: deleteSequencesRes };
@@ -131,7 +134,8 @@ const matchColumns = (
           .getOrCreateQueryRunner()
           .queryBuilder.createUpdateColumnQuery(
             getColumnToUpdate(column, dbColumns!),
-            tableName
+            tableName,
+            dbColumns!.find((c) => c.columnName === column.name)!
           )
       );
   }

@@ -1,6 +1,7 @@
 import { highlight } from "cli-highlight";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
+import { columnRowsType } from "../connection/helpers";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import {
   ColumnType,
@@ -110,7 +111,10 @@ export class QueryRunner {
     };
   }
 
-  async insert({ values, tableName }: InsertParams) {
+  async insert({
+    values,
+    tableName,
+  }: InsertParams): Promise<QueryRunnerFindReturnType> {
     if (!Array.isArray(values)) values = [values];
 
     if (!values.length) return { rows: [] };
@@ -199,9 +203,14 @@ export class QueryRunner {
 
   async updateColumnInDatabase(
     column: ColumnType,
-    tableName: string
+    tableName: string,
+    dbColumn: columnRowsType | undefined
   ): Promise<QueryRunnerResult> {
-    const query = this.queryBuilder.createUpdateColumnQuery(column, tableName);
+    const query = this.queryBuilder.createUpdateColumnQuery(
+      column,
+      tableName,
+      dbColumn
+    );
 
     return await this.query(query);
   }

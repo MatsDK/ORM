@@ -1,3 +1,4 @@
+import { columnRowsType } from "../connection/helpers";
 import {
   ColumnType,
   CreateFindQueryParams,
@@ -143,11 +144,11 @@ export class QueryBuilder {
   }
 
   getPrimaryColumnsQuery(tableName: string): string {
-    let query = `SELECT kcu.column_name `;
+    let query = `SELECT kcu.column_name, tco.constraint_type, kcu.constraint_name `;
     query += `FROM information_schema.table_constraints tco JOIN information_schema.key_column_usage kcu `;
     query += `ON kcu.constraint_name = tco.constraint_name AND kcu.constraint_schema = tco.constraint_schema `;
     query += `AND kcu.constraint_name = tco.constraint_name JOIN information_schema.columns i `;
-    query += `ON kcu.column_name = i.column_name WHERE tco.constraint_type = 'PRIMARY KEY' AND tco.table_name = '${tableName}';`;
+    query += `ON kcu.column_name = i.column_name WHERE tco.table_name = '${tableName}';`;
 
     return query;
   }
@@ -177,12 +178,18 @@ export class QueryBuilder {
     return (query += ` FROM information_schema.columns WHERE table_name = '${tableName}';`);
   }
 
-  createColumnQuery(colum: ColumnType, tableName: string): string {
-    let query = `ALTER TABLE "${tableName}" ADD COLUMN "${colum.name}" ${colum.type}`;
-    return (query += `${colum.options.nullable ? "" : " NOT NULL"} ;`);
+  createColumnQuery(column: ColumnType, tableName: string): string {
+    let query = `ALTER TABLE "${tableName}" ADD COLUMN "${column.name}" ${
+      column.type
+    } ${column.options.unique ? "UNIQUE" : ""}`;
+    return (query += `${column.options.nullable ? "" : " NOT NULL"} ;`);
   }
 
-  createUpdateColumnQuery(column: ColumnType, tableName: string): string {
+  createUpdateColumnQuery(
+    column: ColumnType,
+    tableName: string,
+    dbColumn: columnRowsType | undefined
+  ): string {
     let query = `ALTER TABLE "${tableName}" `;
 
     if (column.options.primary) {
@@ -201,6 +208,12 @@ export class QueryBuilder {
         column.options.array ? "[]" : ""
       }`;
     }
+
+    if (column.options.unique) query += `, ADD UNIQUE ("${column.name}")`;
+    else
+      query += `, DROP CONSTRAINT "${
+        dbColumn?.isUnique.constraint_name || ""
+      }"`;
 
     if (column.options.default)
       query += `, ALTER COLUMN "${column.name}" SET DEFAULT ${column.options.default} `;

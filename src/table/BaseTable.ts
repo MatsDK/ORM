@@ -47,12 +47,12 @@ export class BaseTable {
 
   static async insert<T extends BaseTable>(
     values?: InsertValues<T>
-  ): Promise<any> {
+  ): Promise<{ err?: string }> {
     const tableName: string | undefined = (Array.from(
       getOrCreateOrmHandler().metaDataStore.tables
     ).find(([_, t]) => t.target === this.name) || [undefined])[0];
 
-    if (!tableName) return { rows: undefined, err: "Table not found" };
+    if (!tableName) return { err: "Table not found" };
 
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
