@@ -32,14 +32,8 @@ export type columnRowsType = {
 
 export const formatColumnRows = async (
   rows: any[],
-  tableName: string
+  primaryAndUniqueKeys: any[]
 ): Promise<{ dbColumns?: columnRowsType[]; err?: string }> => {
-  let { rows: primaryAndUniqueKeys, err: err1 } = await getOrCreateOrmHandler()
-    .getOrCreateQueryRunner()
-    .getTablePrimaryColumns(tableName);
-  if (err1) return { err: err1, dbColumns: undefined };
-  // console.log(primaryAndUniqueKeys);
-
   const primaryKeys =
       primaryAndUniqueKeys?.filter(
         ({ constraint_type }) => constraint_type === "PRIMARY KEY"

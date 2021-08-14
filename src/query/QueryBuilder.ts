@@ -143,12 +143,16 @@ export class QueryBuilder {
     return query;
   }
 
-  getPrimaryColumnsQuery(tableName: string): string {
-    let query = `SELECT kcu.column_name, tco.constraint_type, kcu.constraint_name `;
+  getPrimaryColumnsQuery(tables: Map<string, TableType>): string {
+    let query = `SELECT tco.table_name, kcu.column_name, tco.constraint_type, kcu.constraint_name `;
     query += `FROM information_schema.table_constraints tco JOIN information_schema.key_column_usage kcu `;
     query += `ON kcu.constraint_name = tco.constraint_name AND kcu.constraint_schema = tco.constraint_schema `;
     query += `AND kcu.constraint_name = tco.constraint_name JOIN information_schema.columns i `;
-    query += `ON kcu.column_name = i.column_name WHERE tco.table_name = '${tableName}';`;
+    query += `ON kcu.column_name = i.column_name WHERE ${Array.from(
+      tables.values()
+    )
+      .map((t) => `tco.table_name = '${t.name}'`)
+      .join(" OR ")};`;
 
     return query;
   }
@@ -173,9 +177,13 @@ export class QueryBuilder {
     return `DROP TABLE "${tableName}";`;
   }
 
-  getColumnsQuery(tableName: string): string {
-    let query = `SELECT column_name, data_type, is_nullable, udt_name, column_default `;
-    return (query += ` FROM information_schema.columns WHERE table_name = '${tableName}';`);
+  getColumnsQuery(tables: Map<string, TableType>): string {
+    let query = `SELECT column_name, data_type, is_nullable, udt_name, column_default, table_name `;
+    return (query += ` FROM information_schema.columns WHERE ${Array.from(
+      tables.values()
+    )
+      .map((t) => `table_name = '${t.name}'`)
+      .join(" OR ")};`);
   }
 
   createColumnQuery(column: ColumnType, tableName: string): string {
@@ -210,10 +218,11 @@ export class QueryBuilder {
     }
 
     if (column.options.unique) query += `, ADD UNIQUE ("${column.name}")`;
-    else
+    else if (dbColumn?.isUnique) {
       query += `, DROP CONSTRAINT "${
         dbColumn?.isUnique.constraint_name || ""
       }"`;
+    }
 
     if (column.options.default)
       query += `, ALTER COLUMN "${column.name}" SET DEFAULT ${column.options.default} `;

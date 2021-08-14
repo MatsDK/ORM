@@ -34,7 +34,7 @@ import { User } from "./schemas/User";
     console.log("\n>> connected to db\n");
   });
 
-  // const { rows, err } = await User.findMany({ where: {} });
+  // const { rows, err } = await User.findOne({ where: {} });
 
   // const { err } = await User.insert<User>([
   //   { age: 21, userName: null },
