@@ -18,6 +18,7 @@ import {
   constructRelationObjs,
   constructThisQueryOptions,
   deleteProps,
+  getReturnColumns,
 } from "./queryRelationsHelper";
 
 export class QueryRunner {
@@ -113,7 +114,8 @@ export class QueryRunner {
 
   async insert({
     values,
-    tableName,
+    table,
+    options,
   }: InsertParams): Promise<QueryRunnerFindReturnType> {
     if (!Array.isArray(values)) values = [values];
 
@@ -124,10 +126,19 @@ export class QueryRunner {
     for (const row of values as any[])
       Object.keys(row).forEach((key: string) => insertColumns.add(key));
 
+    const columns =
+      getOrCreateOrmHandler().metaDataStore.getColumnsOfTable(table);
+    const returnColumns = getReturnColumns({
+      tableColumns: columns,
+      returnObj: options.returning || {},
+    });
+
     const { query, params } = this.queryBuilder.createInsertQuery({
       values,
-      tableName,
+      tableName: table.name,
       insertColumns: Array.from(insertColumns),
+      options,
+      returnColumns,
     });
 
     return await this.query(query, params);

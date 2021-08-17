@@ -3,9 +3,11 @@ import {
   ColumnType,
   FindCondition,
   FindManyOptions,
+  InsertOptionsReturning,
   RelationColumn,
   RelationObject,
   RelationType,
+  ReturnCondition,
 } from "../types";
 import { FindOperator } from "./operators/FindOperator";
 
@@ -255,4 +257,24 @@ export const constructThisQueryOptions = (
   }
 
   return thisQueryOptions;
+};
+
+type GetReturnColumnsProps = {
+  tableColumns: ColumnType[];
+  returnObj: InsertOptionsReturning;
+};
+
+export const getReturnColumns = ({
+  tableColumns,
+  returnObj,
+}: GetReturnColumnsProps): string[] => {
+  const returnColumns: string[] = [];
+
+  if (typeof returnObj === "boolean") return tableColumns.map((c) => c.name);
+
+  for (const key of Object.keys(returnObj))
+    if (tableColumns.find((tc) => tc.name === key) && returnObj[key])
+      returnColumns.push(key);
+
+  return returnColumns;
 };

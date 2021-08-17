@@ -1,6 +1,12 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { FindOperator } from "../query/operators/FindOperator";
-import { FindManyOptions, FindReturnType, InsertValues } from "../types";
+import {
+  FindManyOptions,
+  FindReturnType,
+  InsertOptions,
+  InsertValues,
+  TableType,
+} from "../types";
 
 export class BaseTable {
   // #target: string;
@@ -46,17 +52,22 @@ export class BaseTable {
   }
 
   static async insert<T extends BaseTable>(
-    values?: InsertValues<T>
-  ): Promise<{ err?: string }> {
-    const tableName: string | undefined = (Array.from(
+    values?: InsertValues<T>,
+    insertOptions?: InsertOptions<T>
+  ): Promise<{ err?: string; rows?: any[] }> {
+    const table: TableType | undefined = (Array.from(
       getOrCreateOrmHandler().metaDataStore.tables
-    ).find(([_, t]) => t.target === this.name) || [undefined])[0];
+    ).find(([_, t]) => t.target === this.name) || [undefined, undefined])[1];
 
-    if (!tableName) return { err: "Table not found" };
+    if (!table) return { err: "Table not found" };
 
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
-      .insert({ values: values || [], tableName });
+      .insert({
+        values: values || [],
+        table,
+        options: insertOptions || {},
+      });
   }
 }
 

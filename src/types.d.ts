@@ -112,7 +112,8 @@ export interface QueryNestedRelationsParams {
 
 export interface InsertParams {
   values: InsertValues;
-  tableName: string;
+  table: TableType;
+  options: InsertOptions;
 }
 
 export interface FindManyProperties {
@@ -142,4 +143,12 @@ export interface createInsertQueryParams {
   values: InsertValues;
   tableName: string;
   insertColumns: string[];
+  options: InsertOptions<T>;
+  returnColumns: string[];
+}
+
+export type InsertOptionsReturning<T = any> = ReturnCondition<T> | boolean;
+
+export interface InsertOptions<T = any> {
+  returning?: ReturnCondition<T> | boolean;
 }

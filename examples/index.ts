@@ -34,15 +34,17 @@ import { User } from "./schemas/User";
     console.log("\n>> connected to db\n");
   });
 
-  // const { rows, err } = await User.findOne({ where: {} });
+  // const { rows, err } = await User.findMany({ where: {} });
 
-  // const { err } = await User.insert<User>([
-  //   { age: 21, userName: null },
-  //   { userName: "test" },
-  // ]);
+  const { err, rows } = await User.insert<User>(
+    { age: 21, userName: null },
+    { returning: { age: true } }
+  );
+  console.log(rows);
 
   // if (err) return console.log("ERROR: ", err);
 
+  // console.log(rows);
   // if (Array.isArray(rows)) {
   //   rows.forEach((r) => {
   //     console.log(r);

@@ -93,6 +93,7 @@ export class QueryBuilder {
     values,
     insertColumns,
     tableName,
+    returnColumns,
   }: createInsertQueryParams): {
     query: string;
     params: any[];
@@ -115,9 +116,12 @@ export class QueryBuilder {
       rowQueries.push(`(${thisRowQuery.join(", ")})`);
     }
 
-    query += ` ${rowQueries.join(", ")};`;
+    query += ` ${rowQueries.join(", ")}`;
 
-    return { query, params };
+    if (returnColumns.length)
+      query += ` RETURNING ${returnColumns.map((c) => `"${c}"`).join(", ")}`;
+
+    return { query: `${query};`, params };
   }
 
   findTablesQuery(): string {
