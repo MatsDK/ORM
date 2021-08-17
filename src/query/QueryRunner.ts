@@ -5,6 +5,7 @@ import { columnRowsType } from "../connection/helpers";
 import { getOrCreateOrmHandler } from "../lib/Global";
 import {
   ColumnType,
+  DeleteParams,
   FindManyProperties,
   InsertParams,
   QueryRunnerFindReturnType,
@@ -139,6 +140,18 @@ export class QueryRunner {
       insertColumns: Array.from(insertColumns),
       options,
       returnColumns,
+    });
+
+    return await this.query(query, params);
+  }
+
+  async delete({
+    options,
+    tableName,
+  }: DeleteParams): Promise<{ err?: string }> {
+    const { query, params } = this.queryBuilder.createDeleteQuery({
+      options,
+      tableName,
     });
 
     return await this.query(query, params);

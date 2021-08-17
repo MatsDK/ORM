@@ -116,6 +116,11 @@ export interface InsertParams {
   options: InsertOptions;
 }
 
+export interface DeleteParams {
+  options: DeleteOptions;
+  tableName: string;
+}
+
 export interface FindManyProperties {
   tableName: string;
   tableTarget: string;
@@ -151,4 +156,11 @@ export type InsertOptionsReturning<T = any> = ReturnCondition<T> | boolean;
 
 export interface InsertOptions<T = any> {
   returning?: ReturnCondition<T> | boolean;
+}
+
+export interface DeleteOptions<T = any> {
+  where?: FindCondition<T>;
+  order?: OrderOption<T>;
+  limit?: number;
+  skip?: number;
 }

@@ -1,6 +1,7 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
 import { FindOperator } from "../query/operators/FindOperator";
 import {
+  DeleteOptions,
   FindManyOptions,
   FindReturnType,
   InsertOptions,
@@ -18,28 +19,28 @@ export class BaseTable {
   static async findMany<T extends BaseTable>(
     options?: FindManyOptions<T>
   ): Promise<FindReturnType<T>> {
-    const tableName: string | undefined = (Array.from(
-      getOrCreateOrmHandler().metaDataStore.tables
-    ).find(([_, t]) => t.target === this.name) || [undefined])[0];
+    const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
+      this.name
+    );
 
-    if (!tableName) return { rows: undefined, err: "Table not found" };
+    if (!table) return { rows: undefined, err: "Table not found" };
 
     if (options?.returning)
       options.returning = formatReturning(options.returning);
 
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
-      .findMany({ tableName, tableTarget: this.name, options });
+      .findMany({ tableName: table.name, tableTarget: this.name, options });
   }
 
   static async findOne<T extends BaseTable>(
     options?: FindManyOptions<T>
   ): Promise<FindReturnType<T>> {
-    const tableName: string | undefined = (Array.from(
-      getOrCreateOrmHandler().metaDataStore.tables
-    ).find(([_, t]) => t.target === this.name) || [undefined])[0];
+    const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
+      this.name
+    );
 
-    if (!tableName) return { rows: undefined, err: "Table not found" };
+    if (!table) return { rows: undefined, err: "Table not found" };
 
     if (options?.returning)
       options.returning = formatReturning(options.returning);
@@ -48,16 +49,16 @@ export class BaseTable {
 
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
-      .findMany({ tableName, tableTarget: this.name, options });
+      .findMany({ tableName: table.name, tableTarget: this.name, options });
   }
 
   static async insert<T extends BaseTable>(
     values?: InsertValues<T>,
     insertOptions?: InsertOptions<T>
   ): Promise<{ err?: string; rows?: any[] }> {
-    const table: TableType | undefined = (Array.from(
-      getOrCreateOrmHandler().metaDataStore.tables
-    ).find(([_, t]) => t.target === this.name) || [undefined, undefined])[1];
+    const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
+      this.name
+    );
 
     if (!table) return { err: "Table not found" };
 
@@ -68,6 +69,20 @@ export class BaseTable {
         table,
         options: insertOptions || {},
       });
+  }
+
+  static async delete<T extends BaseTable>(
+    deleteOptions: DeleteOptions<T> = {}
+  ): Promise<{ err?: string }> {
+    const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
+      this.name
+    );
+
+    if (!table) return { err: "Tabl not found" };
+
+    return await getOrCreateOrmHandler()
+      .getOrCreateQueryRunner()
+      .delete({ options: deleteOptions, tableName: table.name });
   }
 }
 

@@ -75,7 +75,7 @@ export const createCondition = (
       })
       .join(", ");
 
-    return `${q})`;
+    return isConditionNOT(options[key].name, `${q})`);
   } else if (options[key].name === "Not") {
     values.push(options[key].raw);
 

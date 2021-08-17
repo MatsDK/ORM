@@ -49,7 +49,13 @@ class MetaDataStore {
   getColumnsOfTable(table: TableType): ColumnType[] {
     return this.columns.get(table.target) || [];
   }
+
   getRelationsOfTable(tableTarget: string): RelationType[] {
     return this.relations.get(tableTarget) || [];
+  }
+
+  getTableByTarget(targetName: string): TableType | undefined {
+    return (Array.from(this.tables).find(([_, t]) => t.target === targetName) ||
+      Array())[1];
   }
 }

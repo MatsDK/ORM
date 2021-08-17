@@ -36,13 +36,18 @@ import { User } from "./schemas/User";
 
   // const { rows, err } = await User.findMany({ where: {} });
 
-  const { err, rows } = await User.insert<User>(
-    { age: 21, userName: null },
-    { returning: { age: true } }
-  );
-  console.log(rows);
+  // const { err, rows } = await User.insert<User>(
+  //   { age: 22, userName: null },
+  //   { returning: { id: true } }
+  // );
 
   // if (err) return console.log("ERROR: ", err);
+
+  const { err } = await User.delete<User>({
+    where: { id: In([33, 37]) },
+    limit: 1,
+    skip: 1,
+  });
 
   // console.log(rows);
   // if (Array.isArray(rows)) {

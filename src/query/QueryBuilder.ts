@@ -5,6 +5,7 @@ import {
   CreateFindRelationRowsQueryParams,
   createInsertQueryParams,
   CreateQueryReturnType,
+  DeleteParams,
   TableType,
 } from "../types";
 import { createCondition, createOrderQuery } from "./queryBuilderHelper";
@@ -122,6 +123,29 @@ export class QueryBuilder {
       query += ` RETURNING ${returnColumns.map((c) => `"${c}"`).join(", ")}`;
 
     return { query: `${query};`, params };
+  }
+
+  createDeleteQuery({
+    options,
+    tableName,
+  }: DeleteParams): CreateQueryReturnType {
+    let query = `DELETE FROM "${tableName}"`;
+    const params: any[] = [];
+
+    if (options.where || options.skip != null || options.limit != null) {
+      query += ` WHERE ctid IN (SELECT ctid FROM "${tableName}" ${
+        options.where
+          ? ` WHERE ${this.constuctFindConition(options.where, params).query}`
+          : ""
+      } `;
+
+      if (options.skip != null) query += `OFFSET ${options.skip} `;
+      if (options.limit != null) query += `LIMIT ${options.limit}`;
+
+      query += `)`;
+    }
+
+    return { query, params };
   }
 
   findTablesQuery(): string {
