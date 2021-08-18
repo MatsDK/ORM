@@ -43,11 +43,15 @@ import { User } from "./schemas/User";
 
   // if (err) return console.log("ERROR: ", err);
 
-  const { err } = await User.delete<User>({
-    where: { id: In([33, 37]) },
-    limit: 1,
-    skip: 1,
-  });
+  // const { err, rowCount } = await User.delete<User>({
+  //   where: { id: 67 },
+  //   order: { id: "DESC" },
+  // });
+  // console.log(err, rowCount);
+  // const { err, rowCount } = await User.update<User>({
+  //   where: { id: 68 },
+  //   set: { userName: "new_user_name" },
+  // });
 
   // console.log(rows);
   // if (Array.isArray(rows)) {

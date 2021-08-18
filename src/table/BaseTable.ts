@@ -1,21 +1,14 @@
 import { getOrCreateOrmHandler } from "../lib/Global";
-import { FindOperator } from "../query/operators/FindOperator";
 import {
   DeleteOptions,
   FindManyOptions,
   FindReturnType,
   InsertOptions,
   InsertValues,
-  TableType,
+  UpdateOptions,
 } from "../types";
 
 export class BaseTable {
-  // #target: string;
-
-  constructor() {
-    // this.#target = this.constructor.name;
-  }
-
   static async findMany<T extends BaseTable>(
     options?: FindManyOptions<T>
   ): Promise<FindReturnType<T>> {
@@ -54,7 +47,7 @@ export class BaseTable {
 
   static async insert<T extends BaseTable>(
     values?: InsertValues<T>,
-    insertOptions?: InsertOptions<T>
+    insertOptions: InsertOptions<T> = {}
   ): Promise<{ err?: string; rows?: any[] }> {
     const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
       this.name
@@ -73,7 +66,7 @@ export class BaseTable {
 
   static async delete<T extends BaseTable>(
     deleteOptions: DeleteOptions<T> = {}
-  ): Promise<{ err?: string }> {
+  ): Promise<{ err?: string; rowCount?: number }> {
     const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
       this.name
     );
@@ -83,6 +76,23 @@ export class BaseTable {
     return await getOrCreateOrmHandler()
       .getOrCreateQueryRunner()
       .delete({ options: deleteOptions, tableName: table.name });
+  }
+
+  static async update<T extends BaseTable>(
+    updateOptions: UpdateOptions<T>
+  ): Promise<{ err?: string; rowCount?: number }> {
+    const table = getOrCreateOrmHandler().metaDataStore.getTableByTarget(
+      this.name
+    );
+    if (!table) return { err: "Table not found" };
+
+    if (!updateOptions?.set || !Object.keys(updateOptions.set).length)
+      return {};
+
+    return await getOrCreateOrmHandler().getOrCreateQueryRunner().update({
+      options: updateOptions,
+      table,
+    });
   }
 }
 

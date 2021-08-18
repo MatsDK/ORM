@@ -11,6 +11,7 @@ import {
   QueryRunnerFindReturnType,
   RelationObject,
   TableType,
+  UpdateParams,
 } from "../types";
 import { QueryBuilder } from "./QueryBuilder";
 import { QueryRelation } from "./QueryRelation";
@@ -152,6 +153,18 @@ export class QueryRunner {
     const { query, params } = this.queryBuilder.createDeleteQuery({
       options,
       tableName,
+    });
+
+    return await this.query(query, params);
+  }
+
+  async update({
+    options,
+    table,
+  }: UpdateParams): Promise<{ err?: string; rowCount?: number }> {
+    const { query, params } = this.queryBuilder.createUpdateQuery({
+      options,
+      table,
     });
 
     return await this.query(query, params);

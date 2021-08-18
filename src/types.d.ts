@@ -164,3 +164,40 @@ export interface DeleteOptions<T = any> {
   limit?: number;
   skip?: number;
 }
+
+export interface UpdateOptions<T = any> {
+  where?: FindCondition<T>;
+  set?: UpdateCondition<T>;
+  order?: OrderOption<T>;
+  limit?: number;
+  skip?: number;
+}
+
+export interface UpdateParams {
+  options: UpdateOptions;
+  table: TableType;
+}
+
+export type UpdateCondition<T> =
+  | {
+      [P in keyof T]?:
+        | ReturnCondition<T[P]>
+        | findConditionValue
+        | findConditionValue[];
+    }
+  | {
+      [P in keyof T]?:
+        | ReturnCondition<T[P]>
+        | findConditionValue
+        | findConditionValue[];
+    }[]
+  | { [key: string]: findConditionValue };
+
+export interface AddConditionsObj {
+  order: any;
+  where: any;
+  limit: number | undefined;
+  skip: number | undefined;
+  params: any[];
+  tableName: string;
+}
