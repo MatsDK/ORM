@@ -201,3 +201,10 @@ export interface AddConditionsObj {
   params: any[];
   tableName: string;
 }
+
+export interface InsertRelationsProps {
+  table: TableType;
+  values: any[];
+  options: InsertOptions;
+  rows: any[];
+}

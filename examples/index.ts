@@ -36,22 +36,31 @@ import { User } from "./schemas/User";
 
   // const { rows, err } = await User.findMany({ where: {} });
 
-  // const { err, rows } = await User.insert<User>(
-  //   { age: 22, userName: null },
-  //   { returning: { id: true } }
-  // );
+  const { err, rows } = await User.insert<User>(
+    { age: 22, userName: null, photos: [{ userId: 2, Keywords: ["test21"] }] },
+    { returning: { age: true, photos: [{ Keywords: true }] } }
+  );
 
-  // if (err) return console.log("ERROR: ", err);
+  if (err) return console.log("ERROR: ", err);
+
+  if (Array.isArray(rows)) {
+    rows.forEach((r) => {
+      console.log(r);
+    });
+  }
 
   // const { err, rowCount } = await User.delete<User>({
   //   where: { id: 67 },
   //   order: { id: "DESC" },
   // });
+
   // console.log(err, rowCount);
+
   // const { err, rowCount } = await User.update<User>({
   //   where: { id: 68 },
-  //   set: { userName: "new_user_name" },
+  //   set: { userName: "username" },
   // });
+  // console.log(err, rowCount);
 
   // console.log(rows);
   // if (Array.isArray(rows)) {

@@ -1,4 +1,5 @@
 import { highlight } from "cli-highlight";
+import { lchmod } from "fs";
 import { Client } from "pg";
 import { QueryRunnerResult } from "../connection";
 import { columnRowsType } from "../connection/helpers";
@@ -8,11 +9,13 @@ import {
   DeleteParams,
   FindManyProperties,
   InsertParams,
+  InsertRelationsProps,
   QueryRunnerFindReturnType,
   RelationObject,
   TableType,
   UpdateParams,
 } from "../types";
+import { FindReturnType } from "./InsertRelationsHelper";
 import { QueryBuilder } from "./QueryBuilder";
 import { QueryRelation } from "./QueryRelation";
 import {
@@ -123,13 +126,17 @@ export class QueryRunner {
 
     if (!values.length) return { rows: [] };
 
+    const columns =
+      getOrCreateOrmHandler().metaDataStore.getColumnsOfTable(table);
+
     const insertColumns: Set<string> = new Set();
 
     for (const row of values as any[])
-      Object.keys(row).forEach((key: string) => insertColumns.add(key));
+      Object.keys(row).forEach(
+        (key: string) =>
+          columns.find((c) => c.name === key) && insertColumns.add(key)
+      );
 
-    const columns =
-      getOrCreateOrmHandler().metaDataStore.getColumnsOfTable(table);
     const returnColumns = getReturnColumns({
       tableColumns: columns,
       returnObj: options.returning || {},
@@ -142,8 +149,86 @@ export class QueryRunner {
       options,
       returnColumns,
     });
+    const { rows, err } = await this.query(query, params);
 
-    return await this.query(query, params);
+    if (err) return { err, rows: undefined };
+
+    const { rows: newRows, err: InsertRelationsErr } =
+      await this.insertRelations({
+        table,
+        values: values as any,
+        options,
+        rows: rows || [],
+      });
+
+    if (InsertRelationsErr) return { err: InsertRelationsErr, rows: undefined };
+
+    return { rows: newRows };
+  }
+
+  async insertRelations({
+    table,
+    values,
+    options,
+    rows: returnArr,
+  }: InsertRelationsProps): Promise<QueryRunnerFindReturnType> {
+    const thisTableRelations =
+      getOrCreateOrmHandler().metaDataStore.getRelationsOfTable(table.target);
+
+    for (const relation of thisTableRelations) {
+      let thisRelationInsertedRowsMap: Map<number, any> = new Map(),
+        thisRelationInsertedRows: any[] = [];
+
+      for (const [idx, row] of (values as any[]).entries())
+        if (row[relation.name] != null) {
+          thisRelationInsertedRowsMap.set(idx, row[relation.name]);
+
+          if (Array.isArray(row[relation.name])) {
+            thisRelationInsertedRows = [
+              ...thisRelationInsertedRows,
+              ...row[relation.name],
+            ];
+          } else thisRelationInsertedRows.push(row[relation.name]);
+        }
+
+      if (thisRelationInsertedRows.length) {
+        const thisTable =
+          getOrCreateOrmHandler().metaDataStore.getTableByTarget(relation.type);
+
+        if (!thisTable) continue;
+
+        const returningOption = FindReturnType({
+          options,
+          relationName: relation.name,
+        });
+
+        const { err, rows } = await this.insert({
+          values: thisRelationInsertedRows,
+          table: thisTable,
+          options: { returning: returningOption },
+        });
+        if (err) return { err, rows: undefined };
+
+        if (returningOption)
+          for (const [idx, r] of thisRelationInsertedRows.entries()) {
+            const findIdxOfRow = Array.from(thisRelationInsertedRowsMap).find(
+              (row) =>
+                Array.isArray(row[1]) ? row[1].some((x) => x == r) : row[1] == r
+            );
+
+            if (findIdxOfRow) {
+              if (Array.isArray(values[findIdxOfRow[0]][relation.name]))
+                returnArr[findIdxOfRow[0]][relation.name] = [
+                  ...(returnArr[findIdxOfRow[0]][relation.name] || []),
+                  rows[idx],
+                ];
+              else returnArr[findIdxOfRow[0]][relation.name] = rows[idx];
+            }
+          }
+      }
+    }
+
+    return { rows: returnArr };
   }
 
   async delete({
